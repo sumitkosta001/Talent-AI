@@ -1,0 +1,43 @@
+import { UpcomingInterview } from '../types/dashboard';
+
+export const MOCK_UPCOMING_INTERVIEWS: UpcomingInterview[] = [
+  {
+    id: 'int-1',
+    companyName: 'Google',
+    logoColor: '#EA4335',
+    role: 'Senior Software Engineer',
+    type: 'Technical',
+    mode: 'Online',
+    date: 'Jul 28, 2026',
+    time: '10:00 AM',
+    meetingLink: 'https://meet.google.com/abc-defg-hij',
+    countdownDays: 1,
+    status: 'Confirmed',
+  },
+  {
+    id: 'int-2',
+    companyName: 'Vercel',
+    logoColor: '#000000',
+    role: 'Lead Frontend Architect',
+    type: 'System Design',
+    mode: 'Online',
+    date: 'Jul 30, 2026',
+    time: '2:30 PM',
+    meetingLink: 'https://zoom.us/j/987654321',
+    countdownDays: 3,
+    status: 'Scheduled',
+  },
+  {
+    id: 'int-3',
+    companyName: 'Stripe',
+    logoColor: '#635BFF',
+    role: 'Staff Engineer - Core API',
+    type: 'Behavioral',
+    mode: 'Online',
+    date: 'Aug 04, 2026',
+    time: '11:00 AM',
+    meetingLink: 'https://meet.google.com/xyz-pdqr-wxy',
+    countdownDays: 8,
+    status: 'Scheduled',
+  },
+];

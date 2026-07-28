@@ -1,0 +1,58 @@
+import { RecentActivityItem } from '../types/activity';
+
+export const MOCK_RECENT_ACTIVITY: RecentActivityItem[] = [
+  {
+    id: 'act-1',
+    type: 'applied',
+    title: 'Applied to Google',
+    timestamp: '2 hours ago',
+    description: 'Submitted application for Senior Software Engineer position.',
+    actionText: 'View Application',
+    actionUrl: '/candidate/applications/app-google-sde',
+  },
+  {
+    id: 'act-2',
+    type: 'interview_scheduled',
+    title: 'Interview Scheduled at Vercel',
+    timestamp: '1 day ago',
+    description: 'Technical round scheduled with Lead Frontend Engineer.',
+    actionText: 'Join Meeting',
+    actionUrl: '/candidate/ai/mock-interview',
+  },
+  {
+    id: 'act-3',
+    type: 'ats_improved',
+    title: 'ATS Score Improved',
+    timestamp: '2 days ago',
+    description: 'Optimized resume formatting and keywords, increasing score from 78 to 87.',
+    actionText: 'View Report',
+    actionUrl: '/candidate/resume/analysis',
+  },
+  {
+    id: 'act-4',
+    type: 'skill_added',
+    title: 'Skill Added: Next.js',
+    timestamp: '3 days ago',
+    description: 'Added verified Next.js skill to candidate profile summary list.',
+    actionText: 'Manage Profile',
+    actionUrl: '/candidate/profile',
+  },
+  {
+    id: 'act-5',
+    type: 'company_followed',
+    title: 'Followed Stripe',
+    timestamp: '5 days ago',
+    description: 'Followed Stripe company page to receive open roles alerts.',
+    actionText: 'View Stripe Page',
+    actionUrl: '/companies/stripe',
+  },
+  {
+    id: 'act-6',
+    type: 'project_added',
+    title: 'Project Added: TalentAI Dashboards',
+    timestamp: '1 week ago',
+    description: 'Added portfolio details for the Vercel mock dashboard application.',
+    actionText: 'Edit Portfolio',
+    actionUrl: '/candidate/profile?tab=projects',
+  },
+];

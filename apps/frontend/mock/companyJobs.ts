@@ -1,0 +1,48 @@
+import { Job } from '../types/job';
+
+export const MOCK_COMPANY_JOBS: Record<string, Job[]> = {
+  stripe: [
+    {
+      id: 'stripe-fe-1',
+      companyId: 'stripe',
+      company: 'Stripe',
+      role: 'Senior Frontend Engineer',
+      title: 'Senior Frontend Engineer',
+      salary: '$160K–$200K',
+      match: 87,
+      location: 'Remote, US',
+      logo: 'S',
+      logoColor: 'bg-violet-600',
+      experience: '5+ years',
+      skills: ['React', 'TypeScript', 'Tailwind'],
+      bookmarked: false,
+      applied: false,
+      description: 'Join the Core Dashboard team building elegant merchant developer portals.',
+      date: 'Jul 24, 2025',
+      type: 'Full-time',
+      remoteStatus: 'Remote',
+    },
+  ],
+  vercel: [
+    {
+      id: 'vercel-fe-2',
+      companyId: 'vercel',
+      company: 'Vercel',
+      role: 'Software Engineer II (Next.js)',
+      title: 'Software Engineer II (Next.js)',
+      salary: '$140K–$180K',
+      match: 94,
+      location: 'Remote',
+      logo: 'V',
+      logoColor: 'bg-black',
+      experience: '3+ years',
+      skills: ['Next.js', 'React', 'TypeScript'],
+      bookmarked: false,
+      applied: false,
+      description: 'Help build core framework optimizations inside next-dev and Turbopack core.',
+      date: 'Jul 20, 2025',
+      type: 'Full-time',
+      remoteStatus: 'Remote',
+    },
+  ],
+};

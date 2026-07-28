@@ -1,0 +1,15 @@
+name: Bug report
+description: Create a report to help us improve.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out this form with as much details as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
