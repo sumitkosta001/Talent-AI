@@ -14,6 +14,7 @@ IMPORTANT — Alembic Autogenerate Integration:
 # Each import registers the model's table with Base.metadata.
 # ---------------------------------------------------------------------------
 from app.models.user import User  # noqa: F401
+from app.models.refresh_token import RefreshToken  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Import domain enums for convenient re-export.
@@ -22,7 +23,7 @@ from app.models.enums import UserRole, AuthProvider  # noqa: F401
 
 __all__: list[str] = [
     "User",
+    "RefreshToken",
     "UserRole",
     "AuthProvider",
 ]
-
