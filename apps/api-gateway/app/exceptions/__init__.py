@@ -8,6 +8,8 @@ from .base import TalentAIException
 from .auth import (
     AuthenticationError,
     InvalidTokenError,
+    ExpiredTokenError,
+    TokenTypeMismatchError,
     PermissionDeniedError,
 )
 from .database import EntityNotFoundError, DuplicateEntityError
@@ -19,6 +21,8 @@ __all__ = [
     "TalentAIException",
     "AuthenticationError",
     "InvalidTokenError",
+    "ExpiredTokenError",
+    "TokenTypeMismatchError",
     "PermissionDeniedError",
     "EntityNotFoundError",
     "DuplicateEntityError",

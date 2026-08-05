@@ -19,6 +19,22 @@ class InvalidTokenError(AuthenticationError):
         super().__init__(message=message)
 
 
+class ExpiredTokenError(AuthenticationError):
+    """Raised when a JWT token has expired."""
+
+    def __init__(self, message: str = "Token has expired.") -> None:
+        """Initialize expired token error."""
+        super().__init__(message=message)
+
+
+class TokenTypeMismatchError(AuthenticationError):
+    """Raised when a token type (access vs refresh) does not match expectation."""
+
+    def __init__(self, message: str = "Invalid token type for requested action.") -> None:
+        """Initialize token type mismatch error."""
+        super().__init__(message=message)
+
+
 class PermissionDeniedError(TalentAIException):
     """Raised when user lacks required role/permission scope."""
 

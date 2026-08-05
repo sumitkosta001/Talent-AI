@@ -50,13 +50,12 @@ from app.models.enums import AuthProvider, UserRole
 # back_populates will link them bidirectionally.
 # ---------------------------------------------------------------------------
 if TYPE_CHECKING:
-    pass
+    from app.models.refresh_token import RefreshToken
     # from app.models.resume import Resume
     # from app.models.job_application import JobApplication
     # from app.models.company import Company
     # from app.models.interview import Interview
     # from app.models.notification import Notification
-    # from app.models.refresh_token import RefreshToken
     # from app.models.audit_log import AuditLog
 
 
@@ -289,13 +288,13 @@ class User(BaseModel):
     #     doc="Push/email/in-app notifications sent to this user.",
     # )
     #
-    # refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
-    #     "RefreshToken",
-    #     back_populates="user",
-    #     lazy="selectin",
-    #     cascade="all, delete-orphan",
-    #     doc="Active JWT refresh tokens for session management.",
-    # )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        doc="Active JWT refresh tokens for session management.",
+    )
     #
     # audit_logs: Mapped[list["AuditLog"]] = relationship(
     #     "AuditLog",
