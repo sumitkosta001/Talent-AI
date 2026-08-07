@@ -1,4 +1,8 @@
 """Business Domain Logic Services Package.
 """
 
-__all__ = []
+from app.services.auth_service import AuthService
+
+__all__ = [
+    "AuthService",
+]

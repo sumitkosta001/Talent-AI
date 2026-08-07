@@ -8,13 +8,11 @@ cryptographic operations across the TalentAI platform.
 from typing import Final
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
-from pwdlib.hashers.bcrypt import BcryptHasher
 
 # Singleton PasswordHash instance with Argon2id as default and Bcrypt as fallback/deprecated hasher.
 _hasher: Final[PasswordHash] = PasswordHash(
     (
         Argon2Hasher(),
-        BcryptHasher(),
     )
 )
 

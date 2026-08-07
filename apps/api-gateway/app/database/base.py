@@ -15,7 +15,7 @@ Mixin Composition:
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import DateTime, Boolean, func
+from sqlalchemy import DateTime, Boolean, func, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -79,6 +79,7 @@ class SoftDeleteMixin:
     is_deleted: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
+        server_default=text("false"),
         nullable=False,
         index=True,
         doc="Boolean flag indicating whether entity has been soft deleted.",

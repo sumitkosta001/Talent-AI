@@ -7,8 +7,12 @@ and response formatting across the API Gateway.
 from .base import TalentAIException
 from .auth import (
     AuthenticationError,
+    InvalidCredentialsError,
+    EmailAlreadyExistsError,
+    AccountDisabledError,
     InvalidTokenError,
     ExpiredTokenError,
+    TokenExpiredError,
     TokenTypeMismatchError,
     PermissionDeniedError,
 )
@@ -20,8 +24,12 @@ from .resume import ResumeParsingError, InvalidFileTypeError
 __all__ = [
     "TalentAIException",
     "AuthenticationError",
+    "InvalidCredentialsError",
+    "EmailAlreadyExistsError",
+    "AccountDisabledError",
     "InvalidTokenError",
     "ExpiredTokenError",
+    "TokenExpiredError",
     "TokenTypeMismatchError",
     "PermissionDeniedError",
     "EntityNotFoundError",
