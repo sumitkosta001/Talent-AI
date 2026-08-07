@@ -12,7 +12,7 @@ from app.database.base import (
     SoftDeleteMixin,
     AuditMixin,
 )
-from app.database.session import SessionLocal, get_async_session
+from app.database.session import SessionLocal, AsyncSessionLocal, get_async_session
 from app.database.dependencies import get_db
 from app.database.health import check_database_health
 
@@ -25,6 +25,7 @@ __all__ = [
     "SoftDeleteMixin",
     "AuditMixin",
     "SessionLocal",
+    "AsyncSessionLocal",
     "get_async_session",
     "get_db",
     "check_database_health",
