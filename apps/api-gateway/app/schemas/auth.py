@@ -340,10 +340,122 @@ class RegisterResponse(BaseModel):
         ...,
         description="Summary profile of the newly created user.",
     )
-    tokens: TokenPair = Field(
-        ...,
+    tokens: Optional[TokenPair] = Field(
+        None,
         description="Generated access and refresh JWT token pair.",
     )
+    verification_sent: bool = Field(
+        True,
+        description="Boolean flag indicating whether verification email link was sent.",
+        examples=[True],
+    )
+
+
+class VerifyEmailRequest(BaseModel):
+    """Request DTO for consuming email verification token."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            }
+        }
+    )
+
+    token: str = Field(
+        ...,
+        description="JWT verification token received via email link.",
+        examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."],
+    )
+
+    @field_validator("token")
+    @classmethod
+    def validate_token_str(cls, v: str) -> str:
+        """Strip whitespace and reject blank tokens."""
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("Verification token cannot be blank or empty.")
+        return v.strip()
+
+
+class ResendVerificationRequest(BaseModel):
+    """Request DTO for requesting a new email verification link."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "jane.doe@example.com",
+            }
+        }
+    )
+
+    email: EmailStr = Field(
+        ...,
+        description="Account email address to resend verification link.",
+        examples=["jane.doe@example.com"],
+    )
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_and_clean_email(cls, v: Any) -> str:
+        """Strip and lowercase incoming email."""
+        return clean_email(v)
+
+
+class VerifyEmailResponse(BaseModel):
+    """Response DTO following email verification request."""
+
+    model_config = ConfigDict(
+        frozen=True,
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "message": "Email verified successfully.",
+                "email": "jane.doe@example.com",
+            }
+        },
+    )
+
+    success: bool = Field(
+        True,
+        description="Operation success indicator.",
+        examples=[True],
+    )
+    message: str = Field(
+        "Email verified successfully.",
+        description="Human-readable status message.",
+        examples=["Email verified successfully."],
+    )
+    email: str = Field(
+        ...,
+        description="Primary email address that was verified.",
+        examples=["jane.doe@example.com"],
+    )
+
+
+class ResendVerificationResponse(BaseModel):
+    """Response DTO following resend verification email request."""
+
+    model_config = ConfigDict(
+        frozen=True,
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "message": "Verification email sent.",
+            }
+        },
+    )
+
+    success: bool = Field(
+        True,
+        description="Operation success indicator.",
+        examples=[True],
+    )
+    message: str = Field(
+        "Verification email sent.",
+        description="Human-readable status message.",
+        examples=["Verification email sent."],
+    )
+
 
 
 class LoginRequest(BaseModel):

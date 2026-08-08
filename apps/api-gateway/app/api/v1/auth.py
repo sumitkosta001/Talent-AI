@@ -1,12 +1,12 @@
 """Authentication API Router.
 
-Provides HTTP REST endpoints for user registration, authentication (login),
-token rotation (refresh), session termination (logout, logout-all), and current user state inspection.
-Uses HTTP Bearer authentication for JWT bearer tokens.
+Provides HTTP REST endpoints for user registration, JWT email verification workflows,
+authentication (login), token rotation (refresh), session termination (logout, logout-all),
+and current user state inspection. Uses HTTP Bearer authentication for JWT bearer tokens.
 """
 
 from typing import Annotated
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.dependencies import get_db
@@ -14,6 +14,7 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.services.auth_service import AuthService
+from app.services.email_service import EmailService
 from app.auth.dependencies import get_current_active_user
 from app.schemas.auth import (
     RegisterRequest,
@@ -25,6 +26,10 @@ from app.schemas.auth import (
     LogoutResponse,
     CurrentUserResponse,
     UserSummary,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+    VerifyEmailResponse,
+    ResendVerificationResponse,
 )
 
 router = APIRouter(
@@ -44,7 +49,12 @@ def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     """
     user_repo = UserRepository(db)
     refresh_repo = RefreshTokenRepository(db)
-    return AuthService(user_repository=user_repo, refresh_repository=refresh_repo)
+    email_service = EmailService()
+    return AuthService(
+        user_repository=user_repo,
+        refresh_repository=refresh_repo,
+        email_service=email_service,
+    )
 
 
 @router.post(
@@ -54,10 +64,11 @@ def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     summary="Register a new user account",
     description=(
         "Register a new TalentAI candidate user account. Validates email uniqueness, "
-        "hashes the password using Argon2id, creates the user record, and issues an initial JWT token pair."
+        "hashes password using Argon2id, creates user record, issues JWT email verification token, "
+        "dispatches a verification email, and returns initial JWT access and refresh token pair."
     ),
     responses={
-        201: {"description": "User account created successfully."},
+        201: {"description": "User account created successfully; verification email sent."},
         400: {"description": "Validation error or invalid request payload."},
         409: {"description": "Account with specified email already exists."},
         422: {"description": "Unprocessable entity (Pydantic validation failure)."},
@@ -67,16 +78,78 @@ async def register(
     request: RegisterRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> RegisterResponse:
-    """Register a new TalentAI user account.
+    """Register a new TalentAI user account and dispatch verification email.
 
     Args:
         request: Validated registration request DTO.
         auth_service: Injected AuthService instance.
 
     Returns:
-        RegisterResponse containing user profile summary and JWT token pair.
+        RegisterResponse containing user profile summary, token pair, and verification notice.
     """
     return await auth_service.register_user(request)
+
+
+@router.get(
+    "/verify-email",
+    response_model=VerifyEmailResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify user email address via JWT token parameter",
+    description=(
+        "Validate a JWT email verification token received via email link query parameter. "
+        "Verifies JWT signature, expiration, and token type ('email_verification'), loads user, "
+        "and sets is_verified=True and verified_at timestamp."
+    ),
+    responses={
+        200: {"description": "Email verified successfully."},
+        400: {"description": "Verification token is invalid, expired, or malformed."},
+        404: {"description": "Associated user account not found."},
+    },
+)
+async def verify_email(
+    token: Annotated[str, Query(..., description="JWT email verification token string from URL link")],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> VerifyEmailResponse:
+    """Verify user email address via JWT query parameter token.
+
+    Args:
+        token: JWT email verification token string.
+        auth_service: Injected AuthService instance.
+
+    Returns:
+        VerifyEmailResponse indicating successful email verification.
+    """
+    return await auth_service.verify_email(token)
+
+
+@router.post(
+    "/resend-verification",
+    response_model=ResendVerificationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Resend email verification link",
+    description=(
+        "Generate a fresh JWT email verification token and dispatch a new verification email "
+        "for an unverified account."
+    ),
+    responses={
+        200: {"description": "Verification email sent."},
+        422: {"description": "Validation failure on email input."},
+    },
+)
+async def resend_verification(
+    request: ResendVerificationRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> ResendVerificationResponse:
+    """Resend email verification link for an unverified account.
+
+    Args:
+        request: ResendVerificationRequest containing target email address.
+        auth_service: Injected AuthService instance.
+
+    Returns:
+        ResendVerificationResponse indicating status message.
+    """
+    return await auth_service.resend_verification_email(request)
 
 
 @router.post(
@@ -202,7 +275,7 @@ async def logout_all_devices(
     response_model=CurrentUserResponse,
     status_code=status.HTTP_200_OK,
     summary="Get current authenticated user profile",
-    description="Retrieve the profile details and role summary of the currently authenticated user.",
+    description="Retrieve profile details and role summary of the currently authenticated user.",
     responses={
         200: {"description": "Current user profile fetched successfully."},
         401: {"description": "Not authenticated or bearer token invalid."},

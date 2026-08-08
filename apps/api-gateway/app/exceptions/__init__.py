@@ -1,11 +1,8 @@
-"""Domain Custom Exception Hierarchy Package.
-
-Provides structured, domain-specific exception classes for error handling
-and response formatting across the API Gateway.
+"""Exception Hierarchy and Custom Domain Error Classes Package.
 """
 
-from .base import TalentAIException
-from .auth import (
+from app.exceptions.base import TalentAIException
+from app.exceptions.auth import (
     AuthenticationError,
     InvalidCredentialsError,
     EmailAlreadyExistsError,
@@ -15,11 +12,12 @@ from .auth import (
     TokenExpiredError,
     TokenTypeMismatchError,
     PermissionDeniedError,
+    EmailVerificationError,
+    VerificationTokenExpiredError,
+    VerificationTokenInvalidError,
+    EmailSendFailedError,
 )
-from .database import EntityNotFoundError, DuplicateEntityError
-from .jobs import JobNotFoundError, JobClosedError
-from .users import UserNotFoundError, UserInactiveError
-from .resume import ResumeParsingError, InvalidFileTypeError
+from app.exceptions.users import UserNotFoundError
 
 __all__ = [
     "TalentAIException",
@@ -32,17 +30,9 @@ __all__ = [
     "TokenExpiredError",
     "TokenTypeMismatchError",
     "PermissionDeniedError",
-    "EntityNotFoundError",
-    "DuplicateEntityError",
-    "JobNotFoundError",
-    "JobClosedError",
+    "EmailVerificationError",
+    "VerificationTokenExpiredError",
+    "VerificationTokenInvalidError",
+    "EmailSendFailedError",
     "UserNotFoundError",
-    "UserInactiveError",
-    "ResumeParsingError",
-    "InvalidFileTypeError",
-    "auth",
-    "database",
-    "jobs",
-    "users",
-    "resume",
 ]

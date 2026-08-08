@@ -12,6 +12,10 @@ from app.schemas.auth import (
     RefreshTokenResponse,
     LogoutResponse,
     CurrentUserResponse,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+    VerifyEmailResponse,
+    ResendVerificationResponse,
 )
 
 __all__ = [
@@ -25,4 +29,8 @@ __all__ = [
     "RefreshTokenResponse",
     "LogoutResponse",
     "CurrentUserResponse",
+    "VerifyEmailRequest",
+    "ResendVerificationRequest",
+    "VerifyEmailResponse",
+    "ResendVerificationResponse",
 ]

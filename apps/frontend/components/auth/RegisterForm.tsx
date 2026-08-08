@@ -43,7 +43,8 @@ export default function RegisterForm() {
     try {
       const res = await authService.register({ name, email, pass: password, role });
       if (res.success) {
-        router.push('/verify-email');
+        const registeredEmail = res.user?.email || email;
+        router.push(`/verify-email?email=${encodeURIComponent(registeredEmail)}`);
       } else {
         setError(res.message);
       }

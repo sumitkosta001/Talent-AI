@@ -56,7 +56,7 @@ TokenExpiredError = ExpiredTokenError
 
 
 class TokenTypeMismatchError(AuthenticationError):
-    """Raised when a token type (access vs refresh) does not match expectation."""
+    """Raised when a token type (access vs refresh vs email_verification) does not match expectation."""
 
     def __init__(self, message: str = "Invalid token type for requested action.") -> None:
         """Initialize token type mismatch error."""
@@ -69,3 +69,35 @@ class PermissionDeniedError(TalentAIException):
     def __init__(self, message: str = "Insufficient permissions for requested action.") -> None:
         """Initialize permission denied error with 403 status."""
         super().__init__(message=message, status_code=403)
+
+
+class EmailVerificationError(TalentAIException):
+    """Base exception for email verification failures."""
+
+    def __init__(self, message: str = "Email verification failed.", status_code: int = 400) -> None:
+        """Initialize email verification error."""
+        super().__init__(message=message, status_code=status_code)
+
+
+class VerificationTokenExpiredError(EmailVerificationError):
+    """Raised when an email verification token has expired."""
+
+    def __init__(self, message: str = "Verification token has expired.") -> None:
+        """Initialize verification token expired error."""
+        super().__init__(message=message, status_code=400)
+
+
+class VerificationTokenInvalidError(EmailVerificationError):
+    """Raised when an email verification token signature or claim is invalid."""
+
+    def __init__(self, message: str = "Verification token is invalid or malformed.") -> None:
+        """Initialize verification token invalid error."""
+        super().__init__(message=message, status_code=400)
+
+
+class EmailSendFailedError(TalentAIException):
+    """Raised when transactional email dispatch fails."""
+
+    def __init__(self, message: str = "Failed to dispatch email via delivery service.") -> None:
+        """Initialize email send failed error with 500 status."""
+        super().__init__(message=message, status_code=500)

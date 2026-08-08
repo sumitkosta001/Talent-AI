@@ -1,11 +1,11 @@
 """Authentication Business Logic Service.
 
 Encapsulates all core authentication operations including user registration,
-credential validation, JWT token pair issuance, refresh token rotation,
-session revocation, and authenticated profile retrieval.
+email verification workflows, credential validation, JWT token pair issuance,
+refresh token rotation, session revocation, and authenticated profile retrieval.
 """
 
-import hashlib
+import logging
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import Optional, Union
@@ -15,13 +15,16 @@ from app.models.refresh_token import RefreshToken
 from app.models.enums import UserRole, AuthProvider
 from app.repositories.user_repository import UserRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
+from app.services.email_service import EmailService
 from app.auth.password import hash_password, verify_password
 from app.auth.jwt import (
     create_access_token,
     create_refresh_token,
-    decode_token,
+    create_email_verification_token,
     verify_access_token,
     verify_refresh_token,
+    verify_email_verification_token,
+    decode_token,
 )
 from app.schemas.auth import (
     UserSummary,
@@ -33,6 +36,10 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RefreshTokenResponse,
     LogoutResponse,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+    VerifyEmailResponse,
+    ResendVerificationResponse,
 )
 from app.exceptions.auth import (
     EmailAlreadyExistsError,
@@ -40,38 +47,33 @@ from app.exceptions.auth import (
     AccountDisabledError,
     InvalidTokenError,
     ExpiredTokenError,
-    TokenExpiredError,
+    VerificationTokenExpiredError,
+    VerificationTokenInvalidError,
 )
 from app.exceptions.users import UserNotFoundError
 
+logger = logging.getLogger("talentai.services.auth")
+
 
 class AuthService:
-    """Service handling core authentication business logic and session workflows."""
+    """Service handling core authentication business logic, email verification, and session workflows."""
 
     def __init__(
         self,
         user_repository: UserRepository,
         refresh_repository: RefreshTokenRepository,
+        email_service: Optional[EmailService] = None,
     ) -> None:
-        """Initialize AuthService with required database repositories.
+        """Initialize AuthService with required database repositories and email service.
 
         Args:
             user_repository: Data access repository for User entities.
             refresh_repository: Data access repository for RefreshToken entities.
+            email_service: Optional EmailService instance for email delivery.
         """
         self.user_repo = user_repository
         self.refresh_repo = refresh_repository
-
-    def _hash_token(self, token_str: str) -> str:
-        """Compute SHA-256 hash of a raw JWT string for secure database storage.
-
-        Args:
-            token_str: Plaintext JWT string.
-
-        Returns:
-            SHA-256 hex digest string.
-        """
-        return hashlib.sha256(token_str.encode("utf-8")).hexdigest()
+        self.email_service = email_service if email_service is not None else EmailService()
 
     async def _issue_token_pair(self, user: User) -> TokenPair:
         """Generate, persist, and return a fresh access and refresh token pair.
@@ -98,7 +100,8 @@ class AuthService:
             expires_at = datetime.now(timezone.utc)
 
         # Hash refresh token for storage
-        token_hash = self._hash_token(refresh_token_str)
+        import hashlib
+        token_hash = hashlib.sha256(refresh_token_str.encode("utf-8")).hexdigest()
 
         refresh_token_obj = RefreshToken(
             user_id=user.id,
@@ -115,13 +118,13 @@ class AuthService:
         )
 
     async def register_user(self, request: RegisterRequest) -> RegisterResponse:
-        """Register a new user account with hashed password and initial token pair.
+        """Register a new user account, issue verification JWT token, send email, and return token pair.
 
         Args:
-            request: Validated registration request DTO containing registration details.
+            request: Validated registration request DTO containing user registration details.
 
         Returns:
-            RegisterResponse containing success message, user summary, and token pair.
+            RegisterResponse containing success message, user summary, verification_sent, and token pair.
 
         Raises:
             EmailAlreadyExistsError: If an account with the specified email already exists.
@@ -142,30 +145,139 @@ class AuthService:
             provider=AuthProvider.LOCAL,
             is_active=True,
             is_verified=False,
+            verified_at=None,
         )
 
         user = await self.user_repo.create_user(new_user)
+
+        # Generate JWT email verification token
+        verification_token = create_email_verification_token(
+            user_id=str(user.id),
+            email=user.email,
+        )
+
+        # Dispatch verification email asynchronously
+        try:
+            await self.email_service.send_verification_email(
+                email=user.email,
+                name=user.first_name,
+                token=verification_token,
+            )
+            logger.info("Verification email dispatched for registered user: %s", user.email)
+        except Exception as exc:
+            logger.warning("Failed to send registration verification email to %s: %s", user.email, exc)
+
+        # Issue JWT Access & Refresh Token Pair
         tokens = await self._issue_token_pair(user)
 
         return RegisterResponse(
-            message="User account registered successfully.",
+            message="User account registered successfully. Verification email sent.",
             user=UserSummary.model_validate(user),
+            verification_sent=True,
             tokens=tokens,
         )
 
-    async def login_user(self, request: LoginRequest) -> LoginResponse:
-        """Authenticate user credentials and issue a new token pair upon success.
+    async def verify_email(self, token: str) -> VerifyEmailResponse:
+        """Validate a JWT email verification token and mark user account as verified.
 
         Args:
-            request: Validated login request DTO containing email and password.
+            token: Raw JWT email verification token string.
 
         Returns:
-            LoginResponse containing success message, user summary, and token pair.
+            VerifyEmailResponse indicating successful email verification.
 
         Raises:
-            InvalidCredentialsError: If email is not found or password verification fails.
-            AccountDisabledError: If user account has been deactivated or suspended.
+            VerificationTokenInvalidError: If token signature, structure, or type is invalid.
+            VerificationTokenExpiredError: If verification token has passed its 24h expiration limit.
+            UserNotFoundError: If associated user record does not exist in database.
         """
+        if not token or not token.strip():
+            raise VerificationTokenInvalidError("Verification token must be provided.")
+
+        payload = verify_email_verification_token(token.strip())
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise VerificationTokenInvalidError("Verification token missing subject claim.")
+
+        user = await self.user_repo.get_by_id(user_id_str)
+        if not user:
+            raise VerificationTokenInvalidError(
+                "This verification link is invalid or no longer available."
+            )
+
+        if user.is_verified:
+            logger.info("User email %s is already verified.", user.email)
+            return VerifyEmailResponse(
+                success=True,
+                message="Email address is already verified.",
+                email=user.email,
+            )
+
+        now = datetime.now(timezone.utc)
+        user.is_verified = True
+        user.verified_at = now
+        await self.user_repo.update_user(user)
+
+        logger.info("Successfully verified email for user %s at %s", user.email, now.isoformat())
+
+        return VerifyEmailResponse(
+            success=True,
+            message="Email verified successfully.",
+            email=user.email,
+        )
+
+    async def resend_verification_email(
+        self, request: ResendVerificationRequest
+    ) -> ResendVerificationResponse:
+        """Issue a new JWT email verification token and send a fresh verification email link.
+
+        Args:
+            request: ResendVerificationRequest containing target account email.
+
+        Returns:
+            ResendVerificationResponse indicating status message.
+        """
+        user = await self.user_repo.get_by_email(request.email)
+        if not user:
+            # Security best practice: return success without leaking account non-existence
+            logger.info("Resend verification requested for non-existent email: %s", request.email)
+            return ResendVerificationResponse(
+                success=True,
+                message="Verification email sent.",
+            )
+
+        if user.is_verified:
+            logger.info("Resend verification requested for already-verified email: %s", user.email)
+            return ResendVerificationResponse(
+                success=True,
+                message="Email address is already verified.",
+            )
+
+        # Issue fresh JWT email verification token
+        verification_token = create_email_verification_token(
+            user_id=str(user.id),
+            email=user.email,
+        )
+
+        # Dispatch email
+        try:
+            await self.email_service.send_resend_verification_email(
+                email=user.email,
+                name=user.first_name,
+                token=verification_token,
+            )
+            logger.info("Resent verification email successfully to %s", user.email)
+        except Exception as exc:
+            logger.warning("Failed to resend verification email to %s: %s", user.email, exc)
+
+        return ResendVerificationResponse(
+            success=True,
+            message="Verification email sent.",
+        )
+
+    async def login_user(self, request: LoginRequest) -> LoginResponse:
+        """Authenticate user credentials and issue a new token pair upon success."""
         user = await self.user_repo.get_by_email(request.email)
         if not user or not user.password_hash:
             raise InvalidCredentialsError("Invalid email or password.")
@@ -194,23 +306,7 @@ class AuthService:
     async def refresh_access_token(
         self, request: RefreshTokenRequest
     ) -> RefreshTokenResponse:
-        """Rotate refresh token and issue a new token pair.
-
-        Verifies JWT signature, verifies DB token state (not revoked/expired), revokes the old
-        token, and issues a fresh token pair (Refresh Token Rotation).
-
-        Args:
-            request: RefreshTokenRequest containing the current raw refresh token.
-
-        Returns:
-            RefreshTokenResponse containing success message and new token pair.
-
-        Raises:
-            InvalidTokenError: If token is malformed, invalid, or revoked.
-            TokenExpiredError: If token has passed its expiration limit.
-            AccountDisabledError: If user account is inactive.
-            UserNotFoundError: If associated user record is missing.
-        """
+        """Rotate refresh token and issue a new token pair."""
         raw_token = request.refresh_token
         payload = verify_refresh_token(raw_token)
 
@@ -218,7 +314,8 @@ class AuthService:
         if not user_id_str:
             raise InvalidTokenError("Refresh token missing subject claim.")
 
-        token_hash = self._hash_token(raw_token)
+        import hashlib
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
         db_token = await self.refresh_repo.get_by_token(token_hash)
 
         if not db_token:
@@ -228,7 +325,7 @@ class AuthService:
             raise InvalidTokenError("Refresh token has been revoked.")
 
         if db_token.is_expired:
-            raise TokenExpiredError("Refresh token has expired.")
+            raise ExpiredTokenError("Refresh token has expired.")
 
         user = await self.user_repo.get_by_id(user_id_str)
         if not user:
@@ -249,21 +346,11 @@ class AuthService:
         )
 
     async def logout(self, refresh_token: str) -> LogoutResponse:
-        """Revoke a single refresh token session.
-
-        Args:
-            refresh_token: Raw JWT refresh token string to revoke.
-
-        Returns:
-            LogoutResponse indicating successful revocation.
-
-        Raises:
-            InvalidTokenError: If token signature or format is invalid.
-        """
-        # Validate JWT format/signature
+        """Revoke a single refresh token session."""
         verify_refresh_token(refresh_token)
 
-        token_hash = self._hash_token(refresh_token)
+        import hashlib
+        token_hash = hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
         db_token = await self.refresh_repo.get_by_token(token_hash)
 
         if db_token and not db_token.revoked:
@@ -275,14 +362,7 @@ class AuthService:
         )
 
     async def logout_all_devices(self, user_id: Union[UUID, str]) -> LogoutResponse:
-        """Revoke all active refresh tokens for a user across all devices.
-
-        Args:
-            user_id: User UUID or string identifier.
-
-        Returns:
-            LogoutResponse indicating successful bulk session revocation.
-        """
+        """Revoke all active refresh tokens for a user across all devices."""
         await self.refresh_repo.revoke_all_user_tokens(user_id)
         return LogoutResponse(
             message="All active user sessions logged out successfully.",
@@ -290,19 +370,7 @@ class AuthService:
         )
 
     async def get_current_user(self, access_token: str) -> UserSummary:
-        """Retrieve UserSummary profile for an authenticated access token.
-
-        Args:
-            access_token: Raw JWT access token string.
-
-        Returns:
-            UserSummary profile DTO.
-
-        Raises:
-            InvalidTokenError: If access token signature or claims are invalid.
-            UserNotFoundError: If user associated with token sub claim does not exist.
-            AccountDisabledError: If user account is suspended or inactive.
-        """
+        """Retrieve UserSummary profile for an authenticated access token."""
         payload = verify_access_token(access_token)
         user_id_str = payload.get("sub")
         if not user_id_str:

@@ -16,6 +16,8 @@ from app.exceptions.auth import (
     ExpiredTokenError,
     InvalidTokenError,
     TokenTypeMismatchError,
+    VerificationTokenExpiredError,
+    VerificationTokenInvalidError,
 )
 
 
@@ -96,7 +98,6 @@ def create_refresh_token(user_id: str) -> str:
     """Generate a signed JWT refresh token for session renewal.
 
     Refresh tokens are long-lived tokens containing only subject and session claims.
-    Email and role are intentionally excluded to keep refresh tokens minimal.
 
     Args:
         user_id: Unique string identifier of the user (UUID).
@@ -129,6 +130,47 @@ def create_refresh_token(user_id: str) -> str:
         )
     except Exception as exc:
         raise InvalidTokenError("Failed to encode refresh token.") from exc
+
+
+def create_email_verification_token(user_id: str, email: str) -> str:
+    """Generate a signed JWT token specifically for email address verification.
+
+    Email verification tokens have a 24-hour expiration window and type claim
+    set to 'email_verification'.
+
+    Args:
+        user_id: Unique string identifier of the user (UUID).
+        email: User's primary email address.
+
+    Returns:
+        Encoded signed JWT string.
+
+    Raises:
+        InvalidTokenError: If user_id or email is missing.
+    """
+    if not user_id or not email:
+        raise InvalidTokenError("user_id and email are required to issue an email verification token.")
+
+    now = datetime.now(timezone.utc)
+    expire = _expiration_datetime(timedelta(hours=24))
+
+    payload: Dict[str, Any] = {
+        "sub": str(user_id),
+        "email": str(email),
+        "type": "email_verification",
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
+        "jti": _generate_jti(),
+    }
+
+    try:
+        return jwt.encode(
+            payload,
+            settings.jwt.secret,
+            algorithm=settings.jwt.algorithm,
+        )
+    except Exception as exc:
+        raise InvalidTokenError("Failed to encode email verification token.") from exc
 
 
 def decode_token(token: str) -> Dict[str, Any]:
@@ -164,19 +206,7 @@ def decode_token(token: str) -> Dict[str, Any]:
 
 
 def verify_access_token(token: str) -> Dict[str, Any]:
-    """Decode token and verify that it is a valid access token.
-
-    Args:
-        token: Raw JWT string to verify.
-
-    Returns:
-        Decoded claims dictionary.
-
-    Raises:
-        ExpiredTokenError: If the access token is expired.
-        TokenTypeMismatchError: If the token type claim is not 'access'.
-        InvalidTokenError: If signature or structure is invalid.
-    """
+    """Decode token and verify that it is a valid access token."""
     payload = decode_token(token)
     token_type = payload.get("type")
 
@@ -189,7 +219,20 @@ def verify_access_token(token: str) -> Dict[str, Any]:
 
 
 def verify_refresh_token(token: str) -> Dict[str, Any]:
-    """Decode token and verify that it is a valid refresh token.
+    """Decode token and verify that it is a valid refresh token."""
+    payload = decode_token(token)
+    token_type = payload.get("type")
+
+    if token_type != "refresh":
+        raise TokenTypeMismatchError(
+            f"Expected token type 'refresh', but received '{token_type}'."
+        )
+
+    return payload
+
+
+def verify_email_verification_token(token: str) -> Dict[str, Any]:
+    """Decode token and verify that it is a valid email verification token.
 
     Args:
         token: Raw JWT string to verify.
@@ -198,16 +241,20 @@ def verify_refresh_token(token: str) -> Dict[str, Any]:
         Decoded claims dictionary.
 
     Raises:
-        ExpiredTokenError: If the refresh token is expired.
-        TokenTypeMismatchError: If the token type claim is not 'refresh'.
-        InvalidTokenError: If signature or structure is invalid.
+        VerificationTokenExpiredError: If the token has expired.
+        VerificationTokenInvalidError: If token type claim is not 'email_verification' or signature is invalid.
     """
-    payload = decode_token(token)
-    token_type = payload.get("type")
+    try:
+        payload = decode_token(token)
+    except ExpiredTokenError as exc:
+        raise VerificationTokenExpiredError("Verification token has expired.") from exc
+    except InvalidTokenError as exc:
+        raise VerificationTokenInvalidError("Verification token is invalid or malformed.") from exc
 
-    if token_type != "refresh":
-        raise TokenTypeMismatchError(
-            f"Expected token type 'refresh', but received '{token_type}'."
+    token_type = payload.get("type")
+    if token_type != "email_verification":
+        raise VerificationTokenInvalidError(
+            f"Expected token type 'email_verification', but received '{token_type}'."
         )
 
     return payload

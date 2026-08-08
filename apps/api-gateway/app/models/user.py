@@ -212,6 +212,14 @@ class User(BaseModel):
         doc="Email verification status. Unverified users may have restricted access.",
     )
 
+    verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        doc="UTC timestamp when the user's email address was verified.",
+    )
+
+
     is_superuser: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

@@ -27,7 +27,7 @@ from app.exceptions.users import UserNotFoundError
 logger = logging.getLogger("talentai.auth.dependencies")
 
 # Singleton HTTPBearer instance enforcing Authorization: Bearer <token>
-bearer_scheme = HTTPBearer(auto_error=True)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(

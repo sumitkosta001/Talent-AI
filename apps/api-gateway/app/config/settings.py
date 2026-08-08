@@ -167,14 +167,31 @@ class OAuthSettings(BaseAppSettings):
 
 
 class EmailSettings(BaseAppSettings):
-    """Resend and SMTP transactional email delivery settings."""
+    """Resend, FastAPI-Mail, and SMTP transactional email delivery settings."""
 
     resend_api_key: Optional[str] = Field(None, validation_alias="RESEND_API_KEY")
     smtp_host: str = Field("smtp.resend.com", validation_alias="SMTP_HOST")
     smtp_port: int = Field(587, validation_alias="SMTP_PORT")
     smtp_user: Optional[str] = Field(None, validation_alias="SMTP_USER")
+    smtp_username: Optional[str] = Field(None, validation_alias="SMTP_USERNAME")
     smtp_password: Optional[str] = Field(None, validation_alias="SMTP_PASSWORD")
+    smtp_tls: bool = Field(True, validation_alias="SMTP_TLS")
     email_from: str = Field("TalentAI <no-reply@talentai.com>", validation_alias="EMAIL_FROM")
+
+    # FastAPI-Mail & MAIL_* configuration aliases
+    mail_username: Optional[str] = Field(None, validation_alias="MAIL_USERNAME")
+    mail_password: Optional[str] = Field(None, validation_alias="MAIL_PASSWORD")
+    mail_server: str = Field("smtp.gmail.com", validation_alias="MAIL_SERVER")
+    mail_port: int = Field(587, validation_alias="MAIL_PORT")
+    mail_from: str = Field("no-reply@talentai.com", validation_alias="MAIL_FROM")
+    mail_from_name: str = Field("TalentAI", validation_alias="MAIL_FROM_NAME")
+    mail_starttls: bool = Field(True, validation_alias="MAIL_STARTTLS")
+    mail_ssl_tls: bool = Field(False, validation_alias="MAIL_SSL_TLS")
+    mail_verify_certs: bool = Field(True, validation_alias="MAIL_VERIFY_CERTS")
+
+    frontend_url: str = Field("http://localhost:3000", validation_alias="FRONTEND_URL")
+    email_verification_expire_minutes: int = Field(1440, validation_alias="EMAIL_VERIFICATION_EXPIRE_MINUTES")
+
 
 
 class CloudinarySettings(BaseAppSettings):
