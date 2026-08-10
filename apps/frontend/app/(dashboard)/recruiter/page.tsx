@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRecruiterDashboard } from '@/hooks/useRecruiterDashboard';
+import { useAuth } from '@/hooks/useAuth';
 import DashboardStats from '@/components/recruiter/DashboardStats';
 import QuickActions from '@/components/recruiter/QuickActions';
 import HiringFunnel from '@/components/recruiter/HiringFunnel';
@@ -9,6 +10,7 @@ import { Loader2, Calendar, Clock, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RecruiterDashboardPage() {
+  const { user } = useAuth();
   const { stats, funnel, activities, loading, error } = useRecruiterDashboard();
 
   if (loading) {
@@ -39,7 +41,7 @@ export default function RecruiterDashboardPage() {
     <div className="p-6 space-y-6 max-w-6xl mx-auto text-[#0F172A]">
       {/* Greet recruiter */}
       <div className="text-left">
-        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Welcome Back, Sarah Mitchell 👋</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Welcome Back, {user?.name || 'Sarah Mitchell'} 👋</h1>
         <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
           You have {stats.todayApplications} new candidate applications submitted today to review.
         </p>

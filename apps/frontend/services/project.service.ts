@@ -1,4 +1,4 @@
-import { DEV_MODE } from '@/lib/config';
+import { PROJECTS_BACKEND_READY } from '@/lib/config';
 import { mockDelay } from '@/lib/mockDelay';
 import { CandidateProject } from '@/types/project';
 import { MOCK_PROJECTS } from '@/mock/projects';
@@ -20,7 +20,9 @@ export class CandidateProjectService {
   }
 
   static async getProjects(): Promise<CandidateProject[]> {
-    if (DEV_MODE) {
+    // Projects endpoint not yet implemented on the backend.
+    // Always use local storage until PROJECTS_BACKEND_READY = true.
+    if (!PROJECTS_BACKEND_READY) {
       await mockDelay(200);
       return this.getLocalProjects();
     }
@@ -31,7 +33,7 @@ export class CandidateProjectService {
   }
 
   static async addProject(proj: Partial<CandidateProject>): Promise<CandidateProject> {
-    if (DEV_MODE) {
+    if (!PROJECTS_BACKEND_READY) {
       await mockDelay(300);
       const list = this.getLocalProjects();
       const newProj: CandidateProject = {
@@ -60,7 +62,7 @@ export class CandidateProjectService {
   }
 
   static async deleteProject(id: string): Promise<boolean> {
-    if (DEV_MODE) {
+    if (!PROJECTS_BACKEND_READY) {
       await mockDelay(200);
       const list = this.getLocalProjects();
       const filtered = list.filter((p) => p.id !== id);

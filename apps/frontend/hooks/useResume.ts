@@ -73,19 +73,22 @@ export function useResume() {
           : ('technical' as const),
       }));
 
+      const userStored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
+      const user = userStored ? JSON.parse(userStored) : null;
+
       const merged: CandidateResume & Resume = {
         ...data,
-        lastUpdated: 'Jul 10, 2025',
-        profileCompletion: 85,
+        lastUpdated: data.lastUpdated || 'N/A',
+        profileCompletion: data.profileCompletion || 85,
         resumeStatus: 'Active',
-        summary: 'Senior Software Engineer with 6+ years of experience specializing in React, Next.js, and client developer integrations.',
-        candidateName: 'Alex Johnson',
-        email: 'alex.johnson@gmail.com',
-        phone: '+1 (555) 018-7243',
-        location: 'San Francisco, CA',
-        website: 'https://alexjohnson.dev',
-        github: 'https://github.com/alexjohnson',
-        linkedin: 'https://linkedin.com/in/alex-johnson',
+        summary: data.summary || '',
+        candidateName: user?.name || '',
+        email: user?.email || '',
+        phone: '',
+        location: '',
+        website: '',
+        github: '',
+        linkedin: '',
         experience: mappedExperience,
         projects: mappedProjects,
         education: mappedEducation,
@@ -121,8 +124,11 @@ export function useResume() {
   }, []);
 
   const fetchHistory = useCallback(async () => {
+    const userStored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
+    const user = userStored ? JSON.parse(userStored) : null;
+    const namePrefix = user?.name ? user.name.replace(/\s+/g, '_') : 'Alex_Johnson';
     const mockH: ResumeHistory[] = [
-      { id: '1', name: 'Alex_Johnson_Resume_2026.pdf', size: '1.2 MB', date: 'Jul 10, 2025', status: 'Parsed', score: 87 },
+      { id: '1', name: `${namePrefix}_Resume_2026.pdf`, size: '1.2 MB', date: 'Jul 10, 2025', status: 'Parsed', score: 87 },
     ];
     setHistory(mockH);
   }, []);

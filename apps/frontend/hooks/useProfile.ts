@@ -26,12 +26,28 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleMutation = () => {
+      // Fetch profile without resetting loading to prevent full-screen layout thrashing/loaders
+      CandidateProfileService.getProfile().then(setProfile).catch(() => {});
+    };
+    window.addEventListener('profile-mutated', handleMutation);
+    return () => {
+      window.removeEventListener('profile-mutated', handleMutation);
+    };
+  }, []);
+
   const updateProfile = useCallback(async (updates: Partial<CandidateProfile>) => {
     try {
       const updated = await CandidateProfileService.updateProfile(updates);
       setProfile(updated);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('profile-mutated'));
+      }
       return true;
-    } catch {
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update profile details');
       return false;
     }
   }, []);

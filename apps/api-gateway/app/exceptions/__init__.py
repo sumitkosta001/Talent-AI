@@ -18,6 +18,15 @@ from app.exceptions.auth import (
     EmailSendFailedError,
 )
 from app.exceptions.users import UserNotFoundError
+from app.exceptions.candidate import (
+    CandidateProfileError,
+    CandidateProfileNotFoundError,
+    EducationNotFoundError,
+    ExperienceNotFoundError,
+    SkillNotFoundError,
+    DuplicateSkillError,
+    InvalidDateRangeError,
+)
 
 __all__ = [
     "TalentAIException",
@@ -35,4 +44,11 @@ __all__ = [
     "VerificationTokenInvalidError",
     "EmailSendFailedError",
     "UserNotFoundError",
+    "CandidateProfileError",
+    "CandidateProfileNotFoundError",
+    "EducationNotFoundError",
+    "ExperienceNotFoundError",
+    "SkillNotFoundError",
+    "DuplicateSkillError",
+    "InvalidDateRangeError",
 ]

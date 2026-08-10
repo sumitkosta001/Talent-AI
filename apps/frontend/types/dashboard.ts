@@ -18,6 +18,7 @@ export interface DashboardOverview {
   atsScore: number;
   careerScore: number;
   resumeScore: number;
+  location?: string;
 }
 
 export interface UpcomingInterview {

@@ -11,6 +11,7 @@ interface GreetingCardProps {
   atsScore: number;
   careerScore: number;
   resumeScore: number;
+  location?: string;
 }
 
 export default function GreetingCard({
@@ -19,6 +20,7 @@ export default function GreetingCard({
   atsScore,
   careerScore,
   resumeScore,
+  location,
 }: GreetingCardProps) {
   const [time, setTime] = useState('');
   const [greeting, setGreeting] = useState('Welcome back');
@@ -97,7 +99,7 @@ export default function GreetingCard({
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             <span className="text-[11px] text-slate-300 font-semibold">
-              San Francisco, CA · 68°F · Sunny
+              {location ? `${location} · ` : ''}68°F · Sunny
             </span>
           </div>
         </div>

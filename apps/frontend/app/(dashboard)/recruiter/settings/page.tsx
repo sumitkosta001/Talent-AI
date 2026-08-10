@@ -1,12 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, User, Bell, Clock, Paintbrush } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function RecruiterSettingsPage() {
+  const { user } = useAuth();
   const [name, setName] = useState('Sarah Mitchell');
   const [role, setRole] = useState('Principal Talent Acquisition Lead');
   const [email, setEmail] = useState('sarah.mitchell@talentai.co');
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
   
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [atsAlerts, setAtsAlerts] = useState(true);

@@ -1,16 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { User, Code, Globe, Cpu, Save } from 'lucide-react';
 
 export default function SocialAccountsSection() {
   const { profile, updateProfile } = useProfile();
 
-  const [linkedin, setLinkedin] = useState(profile?.portfolioUrl || 'https://linkedin.com/in/alex-johnson');
-  const [github, setGithub] = useState(profile?.personalWebsite || 'https://github.com/alexjohnson');
-  const [leetcode, setLeetcode] = useState('https://leetcode.com/alexjohnson');
-  const [x, setX] = useState('https://twitter.com/alexjohnson');
+  const [linkedin, setLinkedin] = useState('');
+  const [github, setGithub] = useState('');
+  const [leetcode, setLeetcode] = useState('');
+  const [x, setX] = useState('');
+
+  useEffect(() => {
+    if (profile) {
+      setLinkedin(profile.portfolioUrl || '');
+      setGithub(profile.personalWebsite || '');
+    }
+  }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

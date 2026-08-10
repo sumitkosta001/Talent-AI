@@ -1,4 +1,4 @@
-import { DEV_MODE } from '@/lib/config';
+import { PORTFOLIO_BACKEND_READY } from '@/lib/config';
 import { mockDelay } from '@/lib/mockDelay';
 import { CandidatePortfolioItem } from '@/types/portfolio';
 import { MOCK_PORTFOLIO } from '@/mock/portfolio';
@@ -20,7 +20,9 @@ export class CandidatePortfolioService {
   }
 
   static async getPortfolio(): Promise<CandidatePortfolioItem[]> {
-    if (DEV_MODE) {
+    // Portfolio endpoint not yet implemented on the backend.
+    // Always use local storage until PORTFOLIO_BACKEND_READY = true.
+    if (!PORTFOLIO_BACKEND_READY) {
       await mockDelay(200);
       return this.getLocalPortfolio();
     }
@@ -31,7 +33,7 @@ export class CandidatePortfolioService {
   }
 
   static async addPortfolioItem(item: Partial<CandidatePortfolioItem>): Promise<CandidatePortfolioItem> {
-    if (DEV_MODE) {
+    if (!PORTFOLIO_BACKEND_READY) {
       await mockDelay(300);
       const list = this.getLocalPortfolio();
       const newI: CandidatePortfolioItem = {
@@ -57,7 +59,7 @@ export class CandidatePortfolioService {
   }
 
   static async deletePortfolioItem(id: string): Promise<boolean> {
-    if (DEV_MODE) {
+    if (!PORTFOLIO_BACKEND_READY) {
       await mockDelay(200);
       const list = this.getLocalPortfolio();
       const filtered = list.filter((i) => i.id !== id);
