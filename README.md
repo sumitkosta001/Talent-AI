@@ -289,7 +289,7 @@ Candidate / Recruiter / Admin Dashboard
 - Resume Builder
 - Multi-language Resume Parsing
 - AI Chatbot
-- Calendar Integration
+- Calendar Integration 
 - Email Automation
 - Real-time Notifications
 - Interview Scheduling
