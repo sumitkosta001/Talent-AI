@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Breadcrumbs from '@/components/global/Breadcrumbs';
 import ThemeSwitcher from '@/components/global/ThemeSwitcher';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -60,16 +61,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setMobileOpen(false);
   }, [pathname]);
 
+  const { user, logout, loading: authLoading } = useAuth();
   const isAdmin = pathname.startsWith('/admin');
   const isRecruiter = pathname.startsWith('/recruiter');
   const navItems = isAdmin ? adminNav : isRecruiter ? recruiterNav : candidateNav;
 
-  const userName = isAdmin ? 'Sarah Mitchell' : isRecruiter ? 'Sarah Mitchell' : 'Alex Johnson';
-  const userRole = isAdmin ? 'Super Admin' : isRecruiter ? 'Recruiter' : 'Candidate';
-  const userInitials = isAdmin ? 'SM' : isRecruiter ? 'SM' : 'AJ';
+  // Do NOT show hardcoded fallback names during auth initialization.
+  // While loading, userName/userInitials will be blank so we render a skeleton instead.
+  const userName = user?.name ?? '';
+  const userRole = user?.role
+    ? (user.role.charAt(0).toUpperCase() + user.role.slice(1))
+    : '';
 
-  const handleLogout = () => {
-    alert('Logging out...');
+  const getInitials = (nameStr: string) => {
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (parts[0]?.[0] || 'U').toUpperCase();
+  };
+  const userInitials = user?.name ? getInitials(user.name) : '';
+
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 
@@ -217,13 +231,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#F1F5F9] dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                <div className="w-7 h-7 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-semibold animate-pulse">
-                  {userInitials}
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{userName}</p>
-                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">{userRole}</p>
-                </div>
+                {authLoading ? (
+                  // Skeleton while auth is resolving — prevents fake name flash
+                  <>
+                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                    <div className="hidden sm:block space-y-1">
+                      <div className="h-2.5 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                      <div className="h-2 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-7 h-7 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-semibold">
+                      {userInitials}
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{userName}</p>
+                      <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">{userRole}</p>
+                    </div>
+                  </>
+                )}
                 <ChevronDown size={14} className="text-[#64748B]" />
               </button>
 

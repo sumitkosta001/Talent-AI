@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Search, Loader2, Navigation, Activity, Sparkles, Monitor, Sun, Moon, LogOut, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,6 +17,7 @@ interface CommandPaletteProps {
 export default function CommandPalette({ isOpen, onClose, onShowShortcuts }: CommandPaletteProps) {
   const { query, setQuery, commands, loading } = useCommandPalette();
   const { setTheme } = useTheme();
+  const { logout } = useAuth();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,8 +47,7 @@ export default function CommandPalette({ isOpen, onClose, onShowShortcuts }: Com
     } else if (cmd.actionId) {
       switch (cmd.actionId) {
         case 'logout':
-          alert('Logging out...');
-          router.push('/login');
+          logout().then(() => router.push('/login'));
           break;
         case 'show-shortcuts':
           onShowShortcuts();

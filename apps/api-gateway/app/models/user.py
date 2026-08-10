@@ -303,6 +303,15 @@ class User(BaseModel):
         cascade="all, delete-orphan",
         doc="Active JWT refresh tokens for session management.",
     )
+
+    candidate_profile: Mapped[Optional["CandidateProfile"]] = relationship(
+        "CandidateProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        doc="Candidate profile associated with this user account.",
+    )
+
     #
     # audit_logs: Mapped[list["AuditLog"]] = relationship(
     #     "AuditLog",

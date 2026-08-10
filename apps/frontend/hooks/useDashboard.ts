@@ -1,10 +1,10 @@
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardOverview, UpcomingInterview, ApplicationDeadline, ProductivityGoal } from '@/types/dashboard';
 import { DashboardService } from '@/services/dashboard.service';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useDashboard() {
+  const { user } = useAuth();
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [interviews, setInterviews] = useState<UpcomingInterview[]>([]);
   const [deadlines, setDeadlines] = useState<ApplicationDeadline[]>([]);
@@ -35,7 +35,7 @@ export function useDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, user]);
 
   return {
     overview,

@@ -1,4 +1,4 @@
-import { DEV_MODE } from '@/lib/config';
+import { RESUME_BACKEND_READY } from '@/lib/config';
 import { mockDelay } from '@/lib/mockDelay';
 import { CandidateResume } from '@/types/resume';
 import { MOCK_RESUME } from '@/mock/resume';
@@ -20,7 +20,9 @@ export class CandidateResumeService {
   }
 
   static async getResume(): Promise<CandidateResume> {
-    if (DEV_MODE) {
+    // Resume upload/parsing endpoint not yet implemented on the backend.
+    // Always use local/mock data until RESUME_BACKEND_READY = true.
+    if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
       return this.getLocalResume();
     }

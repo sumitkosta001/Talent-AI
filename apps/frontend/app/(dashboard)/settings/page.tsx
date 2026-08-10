@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { User, Lock, Bell, Palette, Shield, Eye, EyeOff, Camera, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -12,10 +13,18 @@ const tabs = [
 ];
 
 export default function Settings() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPass, setShowPass] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [compact, setCompact] = useState(false);
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Alex';
+  const lastName = user?.name ? user.name.split(' ').slice(1).join(' ') : 'Johnson';
+  const email = user?.email || 'alex@example.com';
+  const userInitials = user?.name 
+    ? (user.name.split(' ')[0]?.[0] || 'U') + (user.name.split(' ')[1]?.[0] || '') 
+    : 'AJ';
 
   const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <button
@@ -70,13 +79,13 @@ export default function Settings() {
                 {/* Avatar */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-2xl font-bold">AJ</div>
+                    <div className="w-16 h-16 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-2xl font-bold">{userInitials}</div>
                     <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center hover:bg-[#F8FAFC] shadow-sm cursor-pointer">
                       <Camera size={11} className="text-[#64748B]" />
                     </button>
                   </div>
                   <div>
-                    <p className="font-medium text-[#0F172A] text-sm">Alex Johnson</p>
+                    <p className="font-medium text-[#0F172A] text-sm">{user?.name || ''}</p>
                     <p className="text-xs text-[#64748B]">Candidate</p>
                     <button className="text-xs text-[#2563EB] mt-1 hover:underline cursor-pointer">
                       Change photo
@@ -86,9 +95,9 @@ export default function Settings() {
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   {[
-                    { label: 'First Name', val: 'Alex' },
-                    { label: 'Last Name', val: 'Johnson' },
-                    { label: 'Email Address', val: 'alex@example.com' },
+                    { label: 'First Name', val: firstName },
+                    { label: 'Last Name', val: lastName },
+                    { label: 'Email Address', val: email },
                     { label: 'Phone Number', val: '+1 (555) 234-5678' },
                     { label: 'Location', val: 'San Francisco, CA' },
                     { label: 'LinkedIn', val: 'linkedin.com/in/alexjohnson' },

@@ -17,6 +17,21 @@ from app.schemas.auth import (
     VerifyEmailResponse,
     ResendVerificationResponse,
 )
+from app.schemas.candidate import (
+    CandidateProfileCreate,
+    CandidateProfileUpdate,
+    CandidateProfileResponse,
+    CandidateProfileDetailResponse,
+    EducationCreate,
+    EducationUpdate,
+    EducationResponse,
+    ExperienceCreate,
+    ExperienceUpdate,
+    ExperienceResponse,
+    SkillCreate,
+    SkillUpdate,
+    SkillResponse,
+)
 
 __all__ = [
     "UserSummary",
@@ -33,4 +48,17 @@ __all__ = [
     "ResendVerificationRequest",
     "VerifyEmailResponse",
     "ResendVerificationResponse",
+    "CandidateProfileCreate",
+    "CandidateProfileUpdate",
+    "CandidateProfileResponse",
+    "CandidateProfileDetailResponse",
+    "EducationCreate",
+    "EducationUpdate",
+    "EducationResponse",
+    "ExperienceCreate",
+    "ExperienceUpdate",
+    "ExperienceResponse",
+    "SkillCreate",
+    "SkillUpdate",
+    "SkillResponse",
 ]

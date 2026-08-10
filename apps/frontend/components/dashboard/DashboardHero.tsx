@@ -18,6 +18,7 @@ export default function DashboardHero({ overview }: DashboardHeroProps) {
         atsScore={overview.atsScore}
         careerScore={overview.careerScore}
         resumeScore={overview.resumeScore}
+        location={overview.location}
       />
       <QuickStats stats={overview.stats} />
     </div>

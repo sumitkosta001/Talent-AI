@@ -2,53 +2,58 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CandidateSkill } from '@/types/skill';
-import { MOCK_SKILLS } from '@/mock/skills';
+import { CandidateSkillService } from '@/services/skill.service';
 
 export function useSkills() {
   const [skills, setSkills] = useState<CandidateSkill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('talentai_candidate_skills');
-    if (!stored) {
-      localStorage.setItem('talentai_candidate_skills', JSON.stringify(MOCK_SKILLS));
-      setSkills(MOCK_SKILLS);
-    } else {
-      setSkills(JSON.parse(stored));
+  const fetchSkills = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await CandidateSkillService.getSkills();
+      setSkills(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load selected skills');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
+  useEffect(() => {
+    fetchSkills();
+  }, [fetchSkills]);
+
   const addSkill = useCallback(async (name: string, level: 'Beginner' | 'Intermediate' | 'Expert', exp: number) => {
-    if (skills.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
-      alert('This skill keywords tag already exists on your profile.');
+    try {
+      const added = await CandidateSkillService.addSkill(name, level, exp);
+      setSkills((prev) => [added, ...prev]);
+      return true;
+    } catch (err: any) {
+      alert(err?.message || 'Failed to add skill entry');
       return false;
     }
-    const newS: CandidateSkill = {
-      id: `sk-${Date.now()}`,
-      name,
-      level,
-      yearsOfExperience: exp,
-      endorsementsCount: 0,
-    };
-    const updated = [newS, ...skills];
-    setSkills(updated);
-    localStorage.setItem('talentai_candidate_skills', JSON.stringify(updated));
-    return true;
-  }, [skills]);
+  }, []);
 
   const deleteSkill = useCallback(async (id: string) => {
-    const updated = skills.filter((s) => s.id !== id);
-    setSkills(updated);
-    localStorage.setItem('talentai_candidate_skills', JSON.stringify(updated));
-    return true;
-  }, [skills]);
+    try {
+      await CandidateSkillService.deleteSkill(id);
+      setSkills((prev) => prev.filter((s) => s.id !== id));
+      return true;
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete skill entry');
+      return false;
+    }
+  }, []);
 
   return {
     skills,
     loading,
+    error,
     addSkill,
     deleteSkill,
+    refetch: fetchSkills,
   };
 }

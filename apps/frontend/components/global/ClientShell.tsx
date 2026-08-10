@@ -10,6 +10,8 @@ import ShortcutModal from './ShortcutModal';
 import GlobalSearch from './GlobalSearch';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
+import { AuthProvider } from '@/providers/AuthProvider';
+
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
@@ -23,48 +25,50 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   return (
     <ThemeProvider>
-      {/* Toast notifications alerts */}
-      <ToastProvider />
+      <AuthProvider>
+        {/* Toast notifications alerts */}
+        <ToastProvider />
 
-      {/* Network offline triggers */}
-      <OfflineState />
+        {/* Network offline triggers */}
+        <OfflineState />
 
-      {/* Page transitions progress bar */}
-      <React.Suspense fallback={null}>
-        <ProgressBar />
-      </React.Suspense>
+        {/* Page transitions progress bar */}
+        <React.Suspense fallback={null}>
+          <ProgressBar />
+        </React.Suspense>
 
 
-      {/* Command Palette (Ctrl+K) */}
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onShowShortcuts={() => {
-          setCommandPaletteOpen(false);
-          setShortcutsHelpOpen(true);
-        }}
-      />
+        {/* Command Palette (Ctrl+K) */}
+        <CommandPalette
+          isOpen={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          onShowShortcuts={() => {
+            setCommandPaletteOpen(false);
+            setShortcutsHelpOpen(true);
+          }}
+        />
 
-      {/* Keyboard Shortcuts Help (Ctrl+/) */}
-      <ShortcutModal
-        isOpen={shortcutsHelpOpen}
-        onClose={() => setShortcutsHelpOpen(false)}
-      />
+        {/* Keyboard Shortcuts Help (Ctrl+/) */}
+        <ShortcutModal
+          isOpen={shortcutsHelpOpen}
+          onClose={() => setShortcutsHelpOpen(false)}
+        />
 
-      {/* Global Search dialog trigger */}
-      <GlobalSearch
-        isOpen={globalSearchOpen}
-        onClose={() => setGlobalSearchOpen(false)}
-      />
+        {/* Global Search dialog trigger */}
+        <GlobalSearch
+          isOpen={globalSearchOpen}
+          onClose={() => setGlobalSearchOpen(false)}
+        />
 
-      {/* Provide an easy way for custom components to trigger global search via custom event */}
-      <div
-        style={{ display: 'none' }}
-        id="talentai-search-trigger"
-        onClick={() => setGlobalSearchOpen(true)}
-      />
+        {/* Provide an easy way for custom components to trigger global search via custom event */}
+        <div
+          style={{ display: 'none' }}
+          id="talentai-search-trigger"
+          onClick={() => setGlobalSearchOpen(true)}
+        />
 
-      {children}
+        {children}
+      </AuthProvider>
     </ThemeProvider>
   );
 }
