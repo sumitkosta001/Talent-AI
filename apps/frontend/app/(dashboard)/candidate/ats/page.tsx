@@ -53,7 +53,7 @@ export default function ATSPage() {
   if (error || !result) {
     return (
       <div className="p-6 text-center max-w-md mx-auto space-y-3">
-        <div className="text-red-500 font-bold text-lg">Error Loading Analysis</div>
+        <div className="text-red-500 font-bold text-lg">Error Loading Analysis details</div>
         <p className="text-sm text-[#64748B]">{error || 'An unexpected error occurred.'}</p>
         <button
           onClick={() => window.location.reload()}

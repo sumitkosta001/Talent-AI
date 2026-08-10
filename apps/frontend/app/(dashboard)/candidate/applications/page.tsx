@@ -38,7 +38,7 @@ export default function CandidateApplicationsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
         <Loader2 className="animate-spin text-blue-600" size={32} />
-        <p className="text-sm font-semibold text-[#64748B]">Loading your application history...</p>
+        <p className="text-sm font-semibold text-[#64748B]">Loading your application history details...</p>
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default function CandidateApplicationsPage() {
   if (error) {
     return (
       <div className="p-6 text-center max-w-md mx-auto space-y-3">
-        <div className="text-red-500 font-bold text-lg">Error Loading Applications</div>
+        <div className="text-red-500 font-bold text-lg">Error Loading Applications details</div>
         <p className="text-sm text-[#64748B]">{error}</p>
         <button
           onClick={() => window.location.reload()}

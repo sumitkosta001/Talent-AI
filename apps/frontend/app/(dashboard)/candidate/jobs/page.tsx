@@ -79,7 +79,7 @@ export default function CandidateJobsPage() {
                 {loading ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-2">
                     <Loader2 className="animate-spin text-blue-600" size={28} />
-                    <p className="text-xs font-semibold text-[#64748B]">Auditing target resume keywords matches...</p>
+                    <p className="text-xs font-semibold text-[#64748B]">Auditing target resume keywords matches</p>
                   </div>
                 ) : recommendations.length === 0 ? (
                   <EmptyJobs onReset={resetFilters} />
