@@ -1,55 +1,34 @@
 'use client';
 
 import { useTheme as useNextTheme } from 'next-themes';
-import { useState, useEffect } from 'react';
-import { ThemeSettings, Theme } from '@/types/theme';
-import { ThemeService } from '@/services/theme.service';
+import { useState, useEffect, useContext } from 'react';
+import { ThemeSettingsContext } from '@/providers/ThemeProvider';
+import { Theme } from '@/types/theme';
 
 export function useTheme() {
   const { theme, setTheme, resolvedTheme } = useNextTheme();
-  const [settings, setSettingsState] = useState<ThemeSettings | null>(null);
+  const context = useContext(ThemeSettingsContext);
+  const [mounted, setMounted] = useState(false);
 
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+
+  const { settings, updateSettings } = context;
+
+  // Load mount state
   useEffect(() => {
-    const activeSettings = ThemeService.getSettings();
-    setSettingsState(activeSettings);
-    if (activeSettings.theme) {
-      setTheme(activeSettings.theme);
+    setMounted(true);
+  }, []);
+
+  // Keep next-themes theme in sync with settings theme
+  useEffect(() => {
+    if (!mounted || !settings || theme === undefined) return;
+
+    if (settings.theme && theme !== settings.theme) {
+      setTheme(settings.theme);
     }
-    if (activeSettings.accessibility.highContrast) {
-      document.documentElement.classList.add('high-contrast');
-    } else {
-      document.documentElement.classList.remove('high-contrast');
-    }
-  }, [setTheme]);
-
-  const updateSettings = (newSettings: Partial<ThemeSettings>) => {
-    setSettingsState((prev) => {
-      if (!prev) return null;
-      const updated = {
-        ...prev,
-        ...newSettings,
-        accessibility: {
-          ...prev.accessibility,
-          ...(newSettings.accessibility || {}),
-        },
-      };
-      ThemeService.saveSettings(updated);
-      
-      if (newSettings.theme) {
-        setTheme(newSettings.theme);
-      }
-
-      if (newSettings.accessibility?.highContrast !== undefined) {
-        if (newSettings.accessibility.highContrast) {
-          document.documentElement.classList.add('high-contrast');
-        } else {
-          document.documentElement.classList.remove('high-contrast');
-        }
-      }
-
-      return updated;
-    });
-  };
+  }, [mounted, settings?.theme, theme, setTheme]);
 
   return {
     theme: theme as Theme,
@@ -59,3 +38,4 @@ export function useTheme() {
     updateSettings,
   };
 }
+
