@@ -27,6 +27,8 @@ export interface CandidateProfile {
   postalCode?: string;
   portfolioUrl?: string;
   personalWebsite?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
   preferredRole?: string;
   preferredWorkMode?: 'Remote' | 'Hybrid' | 'On-site';
   expectedSalary?: string;

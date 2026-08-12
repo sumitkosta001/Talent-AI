@@ -23,8 +23,39 @@ export default function ResumeSection() {
     );
   }
 
-  const handleDownload = () => {
-    alert(`Downloading resume document: ${resume.name}`);
+  const handleDownload = async () => {
+    if (!resume || resume.downloadUrl === '#') {
+      alert('No resume file is available for download.');
+      return;
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const token = localStorage.getItem('talentai_auth_token');
+      
+      const res = await fetch(`${API_URL}${resume.downloadUrl}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to download resume file.');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', resume.name);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert('Error downloading resume. Please try again.');
+    }
   };
 
   return (

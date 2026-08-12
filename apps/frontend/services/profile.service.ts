@@ -51,6 +51,8 @@ export class CandidateProfileService {
       location: data.location || '',
       bio: data.bio || '',
       portfolioUrl: data.portfolio_url || '',
+      linkedinUrl: data.linkedin_url || '',
+      githubUrl: data.github_url || '',
       completionPercentage: data.profile_completion_percentage || 0,
       visibility: 'Public',
       isOpenToWork: true,
@@ -77,6 +79,8 @@ export class CandidateProfileService {
     if (updates.headline !== undefined) payload.headline = updates.headline;
     if (updates.bio !== undefined) payload.bio = updates.bio;
     if (updates.portfolioUrl !== undefined) payload.portfolio_url = updates.portfolioUrl;
+    if (updates.linkedinUrl !== undefined) payload.linkedin_url = updates.linkedinUrl;
+    if (updates.githubUrl !== undefined) payload.github_url = updates.githubUrl;
 
     const res = await apiClient.patch('/api/v1/candidates/me', payload);
 
@@ -98,6 +102,8 @@ export class CandidateProfileService {
       location: data.location || '',
       bio: data.bio || '',
       portfolioUrl: data.portfolio_url || '',
+      linkedinUrl: data.linkedin_url || '',
+      githubUrl: data.github_url || '',
       completionPercentage: data.profile_completion_percentage || 0,
       visibility: 'Public',
       isOpenToWork: true,
