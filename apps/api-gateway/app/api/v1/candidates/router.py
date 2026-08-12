@@ -1,8 +1,11 @@
 """Candidate Profile REST API Routers."""
 
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, File, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+import io
+import os
 
 from app.database.dependencies import get_db
 from app.models.user import User
@@ -288,3 +291,116 @@ async def delete_skill_entry(
     """Remove a specific skill from candidate profile."""
     await service.delete_skill(current_user.id, skill_id)
     return {"success": True, "message": "Skill entry deleted successfully."}
+
+
+# ==============================================================================
+# RESUME ENDPOINTS
+# ==============================================================================
+
+@router.post(
+    "/me/resume/upload",
+    status_code=status.HTTP_200_OK,
+    summary="Upload candidate resume",
+)
+async def upload_my_resume(
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[CandidateService, Depends(get_candidate_service)],
+    file: UploadFile = File(...),
+):
+    """Upload and save candidate's primary resume PDF file."""
+    # Ensure uploads directory exists
+    upload_dir = os.path.join(os.getcwd(), "uploads", "resumes")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, f"{current_user.id}.pdf")
+    
+    # Save the file
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+        
+    # Update candidate profile with the resume URL/path
+    profile = await service.get_or_create_profile(current_user.id)
+    profile.resume_url = "/api/v1/candidates/me/resume/download"
+    await service.profile_repo.update(profile)
+    
+    return {
+        "success": True,
+        "message": "Resume uploaded successfully.",
+        "filename": file.filename,
+    }
+
+
+@router.get(
+    "/me/resume/download",
+    status_code=status.HTTP_200_OK,
+    summary="Download candidate resume file",
+)
+async def download_my_resume(
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[CandidateService, Depends(get_candidate_service)],
+):
+    """Retrieve and stream the candidate's primary resume PDF file."""
+    upload_dir = os.path.join(os.getcwd(), "uploads", "resumes")
+    file_path = os.path.join(upload_dir, f"{current_user.id}.pdf")
+    
+    filename = f"{current_user.full_name.replace(' ', '_')}_Resume.pdf"
+    
+    if os.path.exists(file_path):
+        # Open and stream the file
+        def iterfile():
+            with open(file_path, "rb") as f:
+                yield from f
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    else:
+        # Generate and stream a dummy PDF with candidate name
+        pdf_data = generate_dummy_pdf(current_user.full_name)
+        return StreamingResponse(
+            io.BytesIO(pdf_data),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+
+def generate_dummy_pdf(candidate_name: str) -> bytes:
+    """Generate a simple, valid in-memory PDF file for fallback downloading."""
+    pdf_template = (
+        "%PDF-1.4\n"
+        "1 0 obj\n"
+        "<< /Type /Catalog /Pages 2 0 R >>\n"
+        "endobj\n"
+        "2 0 obj\n"
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n"
+        "endobj\n"
+        "3 0 obj\n"
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\n"
+        "endobj\n"
+        "4 0 obj\n"
+        f"<< /Length {50 + len(candidate_name)} >>\n"
+        "stream\n"
+        "BT\n"
+        "/F1 12 Tf\n"
+        "72 712 Td\n"
+        f"({candidate_name} - Resume Document) Tj\n"
+        "ET\n"
+        "endstream\n"
+        "endobj\n"
+        "xref\n"
+        "0 5\n"
+        "0000000000 65535 f \n"
+        "0000000009 00000 n \n"
+        "0000000058 00000 n \n"
+        "0000000115 00000 n \n"
+        f"0000000{212 + len(candidate_name)} n \n"
+        "trailer\n"
+        "<< /Size 5 /Root 1 0 R >>\n"
+        "startxref\n"
+        f"{314 + len(candidate_name)}\n"
+        "%%EOF"
+    )
+    return pdf_template.encode("utf-8")

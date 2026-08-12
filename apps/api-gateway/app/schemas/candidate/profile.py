@@ -21,6 +21,7 @@ class CandidateProfileBase(BaseModel):
     linkedin_url: Optional[str] = Field(None, max_length=1024, description="LinkedIn URL.")
     github_url: Optional[str] = Field(None, max_length=1024, description="GitHub URL.")
     portfolio_url: Optional[str] = Field(None, max_length=1024, description="Portfolio website URL.")
+    resume_url: Optional[str] = Field(None, max_length=1024, description="Candidate primary resume URL.")
     name: Optional[str] = Field(None, description="Candidate full name.")
     email: Optional[str] = Field(None, description="Candidate email address.")
 
@@ -54,6 +55,7 @@ class CandidateProfileUpdate(BaseModel):
     linkedin_url: Optional[str] = Field(None, max_length=1024)
     github_url: Optional[str] = Field(None, max_length=1024)
     portfolio_url: Optional[str] = Field(None, max_length=1024)
+    resume_url: Optional[str] = Field(None, max_length=1024)
 
     @field_validator("phone_number")
     @classmethod
@@ -66,7 +68,7 @@ class CandidateProfileUpdate(BaseModel):
             return cleaned
         return v
 
-    @field_validator("linkedin_url", "github_url", "portfolio_url", "profile_picture_url")
+    @field_validator("linkedin_url", "github_url", "portfolio_url", "profile_picture_url", "resume_url")
     @classmethod
     def validate_urls(cls, v: Optional[str]) -> Optional[str]:
         """Validate that provided URLs start with http:// or https://."""

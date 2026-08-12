@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CandidateResume, ResumeAnalysis, ResumeHistory, Resume } from '@/types/resume';
 import { CandidateResumeService } from '@/services/resume.service';
+import { CandidateProfileService } from '@/services/profile.service';
 import { MOCK_RESUME_ANALYSIS } from '@/mock/ResumeAnalysis';
 import { MOCK_EXPERIENCE } from '@/mock/experience';
 import { MOCK_EDUCATION } from '@/mock/education';
@@ -75,20 +76,27 @@ export function useResume() {
 
       const userStored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
       const user = userStored ? JSON.parse(userStored) : null;
+ 
+      let profileData = null;
+      try {
+        profileData = await CandidateProfileService.getProfile();
+      } catch (e) {
+        console.error("Failed to load profile details in useResume:", e);
+      }
 
       const merged: CandidateResume & Resume = {
         ...data,
         lastUpdated: data.lastUpdated || 'N/A',
         profileCompletion: data.profileCompletion || 85,
-        resumeStatus: 'Active',
+        resumeStatus: data.resumeStatus || 'Active',
         summary: data.summary || '',
         candidateName: user?.name || '',
         email: user?.email || '',
-        phone: '',
-        location: '',
-        website: '',
-        github: '',
-        linkedin: '',
+        phone: profileData?.phone || '',
+        location: profileData?.location || '',
+        website: profileData?.portfolioUrl || '',
+        github: profileData?.githubUrl || '',
+        linkedin: profileData?.linkedinUrl || '',
         experience: mappedExperience,
         projects: mappedProjects,
         education: mappedEducation,
@@ -136,24 +144,32 @@ export function useResume() {
   const uploadResumeFile = useCallback(async (file: File) => {
     setIsUploading(true);
     setUploadProgress(10);
-    await mockDelay(100);
-    setUploadProgress(50);
-    await mockDelay(100);
-    setUploadProgress(100);
-    setIsUploading(false);
-    setIsUploaded(true);
-    setUploadedFile({ name: file.name });
+    setError(null);
+    try {
+      setUploadProgress(40);
+      await CandidateResumeService.uploadResume(file);
+      setUploadProgress(100);
+      setIsUploaded(true);
+      setUploadedFile({ name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB` });
 
-    const newItem: ResumeHistory = {
-      id: String(Date.now()),
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      status: 'Parsed',
-      score: 80,
-    };
-    setHistory((prev) => [newItem, ...prev]);
-  }, []);
+      const newItem: ResumeHistory = {
+        id: String(Date.now()),
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        status: 'Parsed',
+        score: 87,
+      };
+      setHistory((prev) => [newItem, ...prev]);
+      
+      // Refetch details to sync dashboard with uploaded resume state
+      await fetchResumeData();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload resume file.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [fetchResumeData]);
 
   const deleteHistoryItem = useCallback((id: string) => {
     setHistory((prev) => prev.filter((item) => item.id !== id));

@@ -84,6 +84,13 @@ class CandidateProfile(BaseModel):
         default=None,
         doc="Personal website or online portfolio URL.",
     )
+ 
+    resume_url: Mapped[Optional[str]] = mapped_column(
+        String(1024),
+        nullable=True,
+        default=None,
+        doc="URL pointing to candidate's primary resume document.",
+    )
 
     profile_completion_percentage: Mapped[int] = mapped_column(
         Integer,

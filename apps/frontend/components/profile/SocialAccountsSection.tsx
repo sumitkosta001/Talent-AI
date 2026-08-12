@@ -9,13 +9,14 @@ export default function SocialAccountsSection() {
 
   const [linkedin, setLinkedin] = useState('');
   const [github, setGithub] = useState('');
-  const [leetcode, setLeetcode] = useState('');
+  const [portfolio, setPortfolio] = useState('');
   const [x, setX] = useState('');
 
   useEffect(() => {
     if (profile) {
-      setLinkedin(profile.portfolioUrl || '');
-      setGithub(profile.personalWebsite || '');
+      setLinkedin(profile.linkedinUrl || '');
+      setGithub(profile.githubUrl || '');
+      setPortfolio(profile.portfolioUrl || '');
     }
   }, [profile]);
 
@@ -31,10 +32,15 @@ export default function SocialAccountsSection() {
       alert('Please enter a valid GitHub URL.');
       return;
     }
+    if (portfolio && !urlPattern.test(portfolio)) {
+      alert('Please enter a valid Portfolio / Website URL.');
+      return;
+    }
 
     const ok = await updateProfile({
-      portfolioUrl: linkedin,
-      personalWebsite: github,
+      linkedinUrl: linkedin,
+      githubUrl: github,
+      portfolioUrl: portfolio,
     });
     if (ok) {
       alert('Social profile URLs saved successfully.');
@@ -75,16 +81,16 @@ export default function SocialAccountsSection() {
             />
           </div>
 
-          {/* LeetCode */}
+          {/* Portfolio Website */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide flex items-center gap-1">
-              <Cpu size={13} className="text-amber-500" /> LeetCode profile URL
+              <Globe size={13} className="text-blue-500" /> Portfolio / Website URL
             </label>
             <input
               type="text"
-              value={leetcode}
-              onChange={(e) => setLeetcode(e.target.value)}
-              placeholder="https://leetcode.com/username"
+              value={portfolio}
+              onChange={(e) => setPortfolio(e.target.value)}
+              placeholder="https://portfolio.dev"
               className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-blue-500 bg-white"
             />
           </div>
@@ -92,7 +98,7 @@ export default function SocialAccountsSection() {
           {/* Twitter/X */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide flex items-center gap-1">
-              <Globe size={13} className="text-sky-500" /> Twitter / X URL
+              <Globe size={13} className="text-sky-500" /> Twitter / X URL (Optional)
             </label>
             <input
               type="text"
