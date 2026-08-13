@@ -76,3 +76,19 @@ class SkillProficiency(str, enum.Enum):
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
     EXPERT = "expert"
+
+
+class ResumeStatus(str, enum.Enum):
+    """Processing lifecycle status for uploaded resume documents.
+
+    Members:
+        UPLOADED    — File received and metadata persisted; awaiting processing.
+        PROCESSING  — Resume is being parsed/analyzed by the ML pipeline.
+        PROCESSED   — Resume parsing and analysis completed successfully.
+        FAILED      — Resume processing encountered an unrecoverable error.
+    """
+
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    PROCESSED = "processed"
+    FAILED = "failed"

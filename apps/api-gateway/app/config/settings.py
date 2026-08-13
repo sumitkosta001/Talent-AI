@@ -226,6 +226,35 @@ class CelerySettings(BaseAppSettings):
     result_backend: str = Field("redis://localhost:6379/2", validation_alias="CELERY_RESULT_BACKEND")
 
 
+class ResumeSettings(BaseAppSettings):
+    """Resume upload validation and storage configuration settings."""
+
+    max_resume_size_mb: int = Field(10, validation_alias="MAX_RESUME_SIZE_MB")
+    allowed_extensions: str = Field(
+        ".pdf,.docx",
+        validation_alias="RESUME_ALLOWED_EXTENSIONS",
+    )
+    allowed_mime_types: str = Field(
+        "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        validation_alias="RESUME_ALLOWED_MIME_TYPES",
+    )
+
+    @property
+    def max_resume_size_bytes(self) -> int:
+        """Convert MB limit to bytes for validation."""
+        return self.max_resume_size_mb * 1024 * 1024
+
+    @property
+    def allowed_extensions_list(self) -> list[str]:
+        """Parse comma-separated extensions into a lowercase list."""
+        return [ext.strip().lower() for ext in self.allowed_extensions.split(",") if ext.strip()]
+
+    @property
+    def allowed_mime_types_list(self) -> list[str]:
+        """Parse comma-separated MIME types into a list."""
+        return [mt.strip() for mt in self.allowed_mime_types.split(",") if mt.strip()]
+
+
 class Settings:
     """Master Application Configuration Container."""
 
@@ -240,6 +269,8 @@ class Settings:
     ai = AISettings()
     monitoring = MonitoringSettings()
     celery = CelerySettings()
+    resume = ResumeSettings()
 
 
 settings = Settings()
+

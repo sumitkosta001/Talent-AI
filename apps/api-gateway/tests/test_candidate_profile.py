@@ -91,7 +91,7 @@ async def run_candidate_profile_tests():
         token_r = login_res_r.json()["tokens"]["access_token"]
         headers_r = {"Authorization": f"Bearer {token_r}"}
 
-        print("✔ Setup completed: users created and authenticated.")
+        print("[OK] Setup completed: users created and authenticated.")
 
         # ==============================================================================
         # TEST 1: GET /candidates/me -> verify auto-initialization and default completion (0%)
@@ -103,7 +103,7 @@ async def run_candidate_profile_tests():
         assert profile_a["profile_completion_percentage"] == 0
         assert profile_a["phone_number"] is None
         assert profile_a["headline"] is None
-        print("✔ Profile auto-initialized with 0% completion.")
+        print("[OK] Profile auto-initialized with 0% completion.")
 
         # ==============================================================================
         # TEST 2: PATCH /candidates/me -> update profile fields and verify completion scoring
@@ -129,7 +129,7 @@ async def run_candidate_profile_tests():
         assert profile_a["phone_number"] == "+1234567890"
         assert profile_a["location"] == "Berlin, Germany"
         assert profile_a["profile_completion_percentage"] == 40
-        print("✔ Profile updated; completion scored 40% correctly.")
+        print("[OK] Profile updated; completion scored 40% correctly.")
 
         # Update remaining social URLs -> total 55% completion
         res = await client.patch("/api/v1/candidates/me", headers=headers_a, json={
@@ -141,7 +141,7 @@ async def run_candidate_profile_tests():
         assert res.status_code == 200, res.text
         profile_a = res.json()
         assert profile_a["profile_completion_percentage"] == 65
-        print("✔ Social URLs updated; completion scored 65% correctly.")
+        print("[OK] Social URLs updated; completion scored 65% correctly.")
 
         # ==============================================================================
         # TEST 3: EDUCATION CRUD & DATE VALIDATION & SCORING (+15%)
@@ -174,7 +174,7 @@ async def run_candidate_profile_tests():
         # Verify profile completion updated (65% + 15% = 80%)
         res = await client.get("/api/v1/candidates/me", headers=headers_a)
         assert res.json()["profile_completion_percentage"] == 80
-        print("✔ Education entry added; completion scored 80%.")
+        print("[OK] Education entry added; completion scored 80%.")
 
         # Update education
         res = await client.patch(
@@ -184,7 +184,7 @@ async def run_candidate_profile_tests():
         )
         assert res.status_code == 200, res.text
         assert res.json()["degree"] == "B.Sc Computer Science (Honours)"
-        print("✔ Education entry updated successfully.")
+        print("[OK] Education entry updated successfully.")
 
         # ==============================================================================
         # TEST 4: EXPERIENCE CRUD & SCORING (+10%)
@@ -206,7 +206,7 @@ async def run_candidate_profile_tests():
         # Verify profile completion updated (80% + 10% = 90%)
         res = await client.get("/api/v1/candidates/me", headers=headers_a)
         assert res.json()["profile_completion_percentage"] == 90
-        print("✔ Experience entry added; completion scored 90%.")
+        print("[OK] Experience entry added; completion scored 90%.")
 
         # ==============================================================================
         # TEST 5: SKILLS CRUD & DUPLICATE PREVENTION & NORMALIZATION & SCORING (+10%)
@@ -231,12 +231,12 @@ async def run_candidate_profile_tests():
             "proficiency": "advanced"
         })
         assert res.status_code == 409, f"Expected 409, got {res.status_code}"
-        print("✔ Duplicate skill insertion blocked correctly with HTTP 409.")
+        print("[OK] Duplicate skill insertion blocked correctly with HTTP 409.")
 
         # Verify profile completion updated (90% + 10% = 100%)
         res = await client.get("/api/v1/candidates/me", headers=headers_a)
         assert res.json()["profile_completion_percentage"] == 100
-        print("✔ Skill added; completion scored 100%.")
+        print("[OK] Skill added; completion scored 100%.")
 
         # ==============================================================================
         # TEST 6: AUTHORIZATION AND ROLE-BASED ACCESS CONTROL (RBAC)
@@ -249,7 +249,7 @@ async def run_candidate_profile_tests():
         # Anonymous user accessing endpoint -> 401 Unauthorized
         res = await client.get("/api/v1/candidates/me")
         assert res.status_code == 401, f"Expected 401, got {res.status_code}"
-        print("✔ Endpoint access restrictions enforced correctly (403 for recruiters, 401 for anonymous).")
+        print("[OK] Endpoint access restrictions enforced correctly (403 for recruiters, 401 for anonymous).")
 
         # ==============================================================================
         # TEST 7: IDOR PROTECTION (CANDIDATE B ATTEMPTING TO ACCESS CANDIDATE A'S RECORDS)
@@ -276,7 +276,7 @@ async def run_candidate_profile_tests():
             headers=headers_b
         )
         assert res.status_code == 404, f"Expected 404, got {res.status_code}"
-        print("✔ IDOR protection verified: Candidate B cannot modify Candidate A's sub-entities.")
+        print("[OK] IDOR protection verified: Candidate B cannot modify Candidate A's sub-entities.")
 
         # ==============================================================================
         # TEST 8: DELETION AND COMPLETION RECALCULATION
@@ -302,7 +302,7 @@ async def run_candidate_profile_tests():
 
         res = await client.get("/api/v1/candidates/me", headers=headers_a)
         assert res.json()["profile_completion_percentage"] == 65
-        print("✔ Sub-entities deleted successfully; profile completion score recalculated accurately.")
+        print("[OK] Sub-entities deleted successfully; profile completion score recalculated accurately.")
 
         print("\n============================================================")
         print("ALL CANDIDATE PROFILE INTEGRATION TESTS PASSED SUCCESSFULLY!")

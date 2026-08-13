@@ -4,10 +4,13 @@ from app.repositories.candidate.profile_repository import CandidateProfileReposi
 from app.repositories.candidate.education_repository import EducationRepository
 from app.repositories.candidate.experience_repository import ExperienceRepository
 from app.repositories.candidate.skill_repository import SkillRepository
+from app.repositories.candidate.resume_repository import ResumeRepository
 
 __all__ = [
     "CandidateProfileRepository",
     "EducationRepository",
     "ExperienceRepository",
     "SkillRepository",
+    "ResumeRepository",
 ]
+

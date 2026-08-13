@@ -2,10 +2,7 @@
 
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, status, File, UploadFile
-from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-import io
-import os
 
 from app.database.dependencies import get_db
 from app.models.user import User
@@ -14,7 +11,9 @@ from app.repositories.candidate.profile_repository import CandidateProfileReposi
 from app.repositories.candidate.education_repository import EducationRepository
 from app.repositories.candidate.experience_repository import ExperienceRepository
 from app.repositories.candidate.skill_repository import SkillRepository
+from app.repositories.candidate.resume_repository import ResumeRepository
 from app.services.candidate.candidate_service import CandidateService
+from app.services.candidate.resume_service import ResumeService
 from app.schemas.candidate.profile import (
     CandidateProfileUpdate,
     CandidateProfileDetailResponse,
@@ -34,6 +33,10 @@ from app.schemas.candidate.skill import (
     SkillUpdate,
     SkillResponse,
 )
+from app.schemas.candidate.resume import (
+    ResumeResponse,
+    ResumeUploadResponse,
+)
 
 router = APIRouter(
     prefix="/candidates",
@@ -52,6 +55,16 @@ def get_candidate_service(db: AsyncSession = Depends(get_db)) -> CandidateServic
         education_repo=education_repo,
         experience_repo=experience_repo,
         skill_repo=skill_repo,
+    )
+
+
+def get_resume_service(db: AsyncSession = Depends(get_db)) -> ResumeService:
+    """Dependency provider injecting ResumeService with configured repositories."""
+    profile_repo = CandidateProfileRepository(db)
+    resume_repo = ResumeRepository(db)
+    return ResumeService(
+        profile_repo=profile_repo,
+        resume_repo=resume_repo,
     )
 
 
@@ -298,109 +311,32 @@ async def delete_skill_entry(
 # ==============================================================================
 
 @router.post(
-    "/me/resume/upload",
-    status_code=status.HTTP_200_OK,
+    "/me/resumes",
+    response_model=ResumeUploadResponse,
+    status_code=status.HTTP_201_CREATED,
     summary="Upload candidate resume",
+    description=(
+        "Upload a PDF or DOCX resume file for the authenticated candidate. "
+        "The file is validated for extension, MIME type, file content signature, "
+        "and size before metadata is persisted. The candidate is determined from "
+        "the JWT token — no candidate_id is accepted from the client."
+    ),
 )
 async def upload_my_resume(
     current_user: Annotated[User, Depends(get_current_candidate)],
-    service: Annotated[CandidateService, Depends(get_candidate_service)],
-    file: UploadFile = File(...),
-):
-    """Upload and save candidate's primary resume PDF file."""
-    # Ensure uploads directory exists
-    upload_dir = os.path.join(os.getcwd(), "uploads", "resumes")
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    file_path = os.path.join(upload_dir, f"{current_user.id}.pdf")
-    
-    # Save the file
-    content = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(content)
-        
-    # Update candidate profile with the resume URL/path
-    profile = await service.get_or_create_profile(current_user.id)
-    profile.resume_url = "/api/v1/candidates/me/resume/download"
-    await service.profile_repo.update(profile)
-    
-    return {
-        "success": True,
-        "message": "Resume uploaded successfully.",
-        "filename": file.filename,
-    }
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+    file: UploadFile = File(..., description="Resume file (PDF or DOCX, max 10 MB)"),
+) -> ResumeUploadResponse:
+    """Upload and validate a candidate resume file.
 
-
-@router.get(
-    "/me/resume/download",
-    status_code=status.HTTP_200_OK,
-    summary="Download candidate resume file",
-)
-async def download_my_resume(
-    current_user: Annotated[User, Depends(get_current_candidate)],
-    service: Annotated[CandidateService, Depends(get_candidate_service)],
-):
-    """Retrieve and stream the candidate's primary resume PDF file."""
-    upload_dir = os.path.join(os.getcwd(), "uploads", "resumes")
-    file_path = os.path.join(upload_dir, f"{current_user.id}.pdf")
-    
-    filename = f"{current_user.full_name.replace(' ', '_')}_Resume.pdf"
-    
-    if os.path.exists(file_path):
-        # Open and stream the file
-        def iterfile():
-            with open(file_path, "rb") as f:
-                yield from f
-        
-        return StreamingResponse(
-            iterfile(),
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-        )
-    else:
-        # Generate and stream a dummy PDF with candidate name
-        pdf_data = generate_dummy_pdf(current_user.full_name)
-        return StreamingResponse(
-            io.BytesIO(pdf_data),
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-        )
-
-
-def generate_dummy_pdf(candidate_name: str) -> bytes:
-    """Generate a simple, valid in-memory PDF file for fallback downloading."""
-    pdf_template = (
-        "%PDF-1.4\n"
-        "1 0 obj\n"
-        "<< /Type /Catalog /Pages 2 0 R >>\n"
-        "endobj\n"
-        "2 0 obj\n"
-        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n"
-        "endobj\n"
-        "3 0 obj\n"
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\n"
-        "endobj\n"
-        "4 0 obj\n"
-        f"<< /Length {50 + len(candidate_name)} >>\n"
-        "stream\n"
-        "BT\n"
-        "/F1 12 Tf\n"
-        "72 712 Td\n"
-        f"({candidate_name} - Resume Document) Tj\n"
-        "ET\n"
-        "endstream\n"
-        "endobj\n"
-        "xref\n"
-        "0 5\n"
-        "0000000000 65535 f \n"
-        "0000000009 00000 n \n"
-        "0000000058 00000 n \n"
-        "0000000115 00000 n \n"
-        f"0000000{212 + len(candidate_name)} n \n"
-        "trailer\n"
-        "<< /Size 5 /Root 1 0 R >>\n"
-        "startxref\n"
-        f"{314 + len(candidate_name)}\n"
-        "%%EOF"
+    Accepts multipart/form-data with a single file field.
+    Validates file size, extension, MIME type, and content signature.
+    Creates a Resume database record associated with the authenticated candidate.
+    """
+    resume = await service.upload_resume(current_user.id, file)
+    return ResumeUploadResponse(
+        success=True,
+        message="Resume uploaded successfully.",
+        resume=ResumeResponse.model_validate(resume),
     )
-    return pdf_template.encode("utf-8")
+

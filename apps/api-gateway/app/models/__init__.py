@@ -4,23 +4,27 @@ Re-exports all domain entities and enumeration types so Alembic and application 
 can import models directly from `app.models`.
 """
 
-from app.models.enums import UserRole, AuthProvider, SkillCategory, SkillProficiency
+from app.models.enums import UserRole, AuthProvider, SkillCategory, SkillProficiency, ResumeStatus
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.candidate_profile import CandidateProfile
 from app.models.candidate_education import CandidateEducation
 from app.models.candidate_experience import CandidateExperience
 from app.models.candidate_skill import CandidateSkill
+from app.models.resume import Resume
 
 __all__ = [
     "UserRole",
     "AuthProvider",
     "SkillCategory",
     "SkillProficiency",
+    "ResumeStatus",
     "User",
     "RefreshToken",
     "CandidateProfile",
     "CandidateEducation",
     "CandidateExperience",
     "CandidateSkill",
+    "Resume",
 ]
+

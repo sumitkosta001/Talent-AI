@@ -27,6 +27,15 @@ from app.exceptions.candidate import (
     DuplicateSkillError,
     InvalidDateRangeError,
 )
+from app.exceptions.resume import (
+    ResumeUploadError,
+    InvalidFileTypeError,
+    FileTooLargeError,
+    InvalidFileContentError,
+    UnsafeFilenameError,
+    ResumeParsingError,
+    MissingFileError,
+)
 
 __all__ = [
     "TalentAIException",
@@ -51,4 +60,12 @@ __all__ = [
     "SkillNotFoundError",
     "DuplicateSkillError",
     "InvalidDateRangeError",
+    "ResumeUploadError",
+    "InvalidFileTypeError",
+    "FileTooLargeError",
+    "InvalidFileContentError",
+    "UnsafeFilenameError",
+    "ResumeParsingError",
+    "MissingFileError",
 ]
+

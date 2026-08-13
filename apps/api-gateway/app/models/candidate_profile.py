@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.candidate_education import CandidateEducation
     from app.models.candidate_experience import CandidateExperience
     from app.models.candidate_skill import CandidateSkill
+    from app.models.resume import Resume
 
 
 class CandidateProfile(BaseModel):
@@ -123,6 +124,13 @@ class CandidateProfile(BaseModel):
 
     skills: Mapped[List["CandidateSkill"]] = relationship(
         "CandidateSkill",
+        back_populates="candidate_profile",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    resumes: Mapped[List["Resume"]] = relationship(
+        "Resume",
         back_populates="candidate_profile",
         cascade="all, delete-orphan",
         lazy="selectin",
