@@ -1,6 +1,12 @@
 import { RESUME_BACKEND_READY } from '@/lib/config';
 import { mockDelay } from '@/lib/mockDelay';
-import { CandidateResume } from '@/types/resume';
+import {
+  BackendResume,
+  PaginatedResumeResponse,
+  ResumeProcessingResponse,
+  ResumeRestoreResponse,
+  CandidateResume,
+} from '@/types/resume';
 import { MOCK_RESUME } from '@/mock/resume';
 import { apiClient } from '@/lib/apiClient';
 
@@ -20,6 +26,9 @@ export class CandidateResumeService {
     localStorage.setItem('talentai_candidate_resume', JSON.stringify(res));
   }
 
+  /**
+   * Fetch legacy merged CandidateResume representation for profile & preview compatibility.
+   */
   static async getResume(): Promise<CandidateResume> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
@@ -33,12 +42,11 @@ export class CandidateResumeService {
 
     // 2. Fetch resumes list to check if there is an active/current resume
     const resumesRes = await apiClient.get('/api/v1/candidates/me/resumes?page=1&page_size=10');
-    let currentResume: any = null;
+    let currentResume: BackendResume | null = null;
     if (resumesRes.ok) {
       const listData = await resumesRes.json();
-      const items = listData.items || [];
-      // Find the one marked current, or fall back to the first one in the list
-      currentResume = items.find((r: any) => r.is_current) || items[0] || null;
+      const items: BackendResume[] = listData.items || [];
+      currentResume = items.find((r) => r.is_current) || items[0] || null;
     }
 
     if (!currentResume) {
@@ -63,7 +71,7 @@ export class CandidateResumeService {
         ? new Date(currentResume.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         : 'N/A',
       version: `v${currentResume.version}.0`,
-      atsScore: currentResume.atsScore || 87, // UI default ATS parsing compatibility score
+      atsScore: 87, // UI default ATS parsing compatibility score
       downloadUrl: `/api/v1/candidates/me/resumes/${currentResume.id}/download`,
       lastUpdated: currentResume.uploaded_at
         ? new Date(currentResume.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -74,12 +82,45 @@ export class CandidateResumeService {
     };
   }
 
-  static async getResumes(page: number = 1, pageSize: number = 10): Promise<any> {
+  /**
+   * List candidate resumes with pagination and sorting.
+   */
+  static async getResumes(
+    page: number = 1,
+    pageSize: number = 10,
+    sortBy: string = 'uploaded_at',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginatedResumeResponse> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
-      return { items: [this.getLocalResume()], total: 1 };
+      const mock = this.getLocalResume();
+      return {
+        items: [
+          {
+            id: mock.id || '1',
+            candidate_profile_id: 'default',
+            original_filename: mock.name,
+            mime_type: 'application/pdf',
+            file_extension: '.pdf',
+            file_size_bytes: 1240000,
+            status: 'processed',
+            version: 1,
+            is_current: true,
+            uploaded_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: pageSize,
+        total_pages: 1,
+        has_next: false,
+        has_previous: false,
+      };
     }
-    const res = await apiClient.get(`/api/v1/candidates/me/resumes?page=${page}&page_size=${pageSize}`);
+    const res = await apiClient.get(
+      `/api/v1/candidates/me/resumes?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&sort_order=${sortOrder}`
+    );
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData?.error?.message || errData?.detail || 'Failed to list resumes');
@@ -87,36 +128,57 @@ export class CandidateResumeService {
     return res.json();
   }
 
-  static async previewResume(resumeId: string): Promise<Blob> {
+  /**
+   * Retrieve the candidate's active/current resume.
+   */
+  static async getCurrentResume(): Promise<BackendResume | null> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
-      return new Blob(['Mock PDF Preview Content'], { type: 'application/pdf' });
+      const mock = this.getLocalResume();
+      return {
+        id: mock.id || '1',
+        candidate_profile_id: 'default',
+        original_filename: mock.name,
+        mime_type: 'application/pdf',
+        file_extension: '.pdf',
+        file_size_bytes: 1240000,
+        status: 'processed',
+        version: 1,
+        is_current: true,
+        uploaded_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      };
     }
-    const res = await apiClient.get(`/api/v1/candidates/me/resumes/${resumeId}/preview`);
+    const res = await apiClient.get('/api/v1/candidates/me/resumes/current');
     if (!res.ok) {
+      if (res.status === 404) {
+        return null;
+      }
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch resume preview');
+      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch current resume');
     }
-    return res.blob();
+    return res.json();
   }
 
-  static async downloadResume(resumeId: string): Promise<Blob> {
-    if (!RESUME_BACKEND_READY) {
-      await mockDelay(200);
-      return new Blob(['Mock PDF Download Content'], { type: 'application/pdf' });
-    }
-    const res = await apiClient.get(`/api/v1/candidates/me/resumes/${resumeId}/download`);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch resume download');
-    }
-    return res.blob();
-  }
-
-  static async uploadResume(file: File): Promise<any> {
+  /**
+   * Upload a new PDF/DOCX resume.
+   */
+  static async uploadResume(file: File): Promise<BackendResume> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(300);
-      return { success: true, filename: file.name };
+      return {
+        id: 'mock-id',
+        candidate_profile_id: 'default',
+        original_filename: file.name,
+        mime_type: file.type || 'application/pdf',
+        file_extension: file.name.endsWith('.docx') ? '.docx' : '.pdf',
+        file_size_bytes: file.size,
+        status: 'uploaded',
+        version: 1,
+        is_current: true,
+        uploaded_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      };
     }
 
     const formData = new FormData();
@@ -130,33 +192,42 @@ export class CandidateResumeService {
     return res.json();
   }
 
-  static async getCurrentResume(): Promise<any> {
+  /**
+   * Retrieve secure preview blob for a resume.
+   */
+  static async previewResume(resumeId: string): Promise<Blob> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
-      return this.getLocalResume();
+      return new Blob(['Mock PDF Preview Content'], { type: 'application/pdf' });
     }
-    const res = await apiClient.get('/api/v1/candidates/me/resumes/current');
+    const res = await apiClient.get(`/api/v1/candidates/me/resumes/${resumeId}/preview`);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch current resume');
+      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch resume preview');
     }
-    return res.json();
+    return res.blob();
   }
 
-  static async restoreResumeVersion(resumeId: string): Promise<any> {
+  /**
+   * Retrieve secure download blob for a resume.
+   */
+  static async downloadResume(resumeId: string): Promise<Blob> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
-      return { success: true, message: 'Version restored successfully' };
+      return new Blob(['Mock PDF Download Content'], { type: 'application/pdf' });
     }
-    const res = await apiClient.post(`/api/v1/candidates/me/resumes/${resumeId}/restore`, {});
+    const res = await apiClient.get(`/api/v1/candidates/me/resumes/${resumeId}/download`);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || errData?.detail || 'Failed to restore resume version');
+      throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch resume download');
     }
-    return res.json();
+    return res.blob();
   }
 
-  static async deleteResume(resumeId: string): Promise<any> {
+  /**
+   * Delete a candidate resume.
+   */
+  static async deleteResume(resumeId: string): Promise<{ success: boolean; message: string }> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
       return { success: true, message: 'Resume deleted successfully' };
@@ -169,12 +240,86 @@ export class CandidateResumeService {
     return res.json();
   }
 
-  static async getResumeHistory(page: number = 1, pageSize: number = 10): Promise<any> {
+  /**
+   * Restore an older resume version to become current.
+   */
+  static async restoreResumeVersion(resumeId: string): Promise<ResumeRestoreResponse> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(200);
-      return { items: [this.getLocalResume()], total: 1 };
+      return {
+        success: true,
+        message: 'Version restored successfully',
+        resume: {
+          id: resumeId,
+          candidate_profile_id: 'default',
+          original_filename: 'restored.pdf',
+          mime_type: 'application/pdf',
+          file_extension: '.pdf',
+          file_size_bytes: 1200000,
+          status: 'processed',
+          version: 1,
+          is_current: true,
+          uploaded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        },
+      };
     }
-    const res = await apiClient.get(`/api/v1/candidates/me/resumes/history?page=${page}&page_size=${pageSize}`);
+    const res = await apiClient.post(`/api/v1/candidates/me/resumes/${resumeId}/restore`, {});
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || errData?.detail || 'Failed to restore resume version');
+    }
+    return res.json();
+  }
+
+  /**
+   * Trigger processing on an uploaded resume.
+   */
+  static async processResume(resumeId: string): Promise<ResumeProcessingResponse> {
+    if (!RESUME_BACKEND_READY) {
+      await mockDelay(300);
+      return {
+        success: true,
+        message: 'Resume processed successfully',
+        resume: {
+          id: resumeId,
+          candidate_profile_id: 'default',
+          original_filename: 'resume.pdf',
+          mime_type: 'application/pdf',
+          file_extension: '.pdf',
+          file_size_bytes: 1200000,
+          status: 'processed',
+          version: 1,
+          is_current: true,
+          uploaded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        },
+      };
+    }
+    const res = await apiClient.post(`/api/v1/candidates/me/resumes/${resumeId}/process`, {});
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || errData?.detail || 'Failed to process resume');
+    }
+    return res.json();
+  }
+
+  /**
+   * Retrieve upload history and processing lifecycle metadata.
+   */
+  static async getResumeHistory(
+    page: number = 1,
+    pageSize: number = 10,
+    sortBy: string = 'uploaded_at',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginatedResumeResponse> {
+    if (!RESUME_BACKEND_READY) {
+      await mockDelay(200);
+      return this.getResumes(page, pageSize, sortBy, sortOrder);
+    }
+    const res = await apiClient.get(
+      `/api/v1/candidates/me/resumes/history?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&sort_order=${sortOrder}`
+    );
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData?.error?.message || errData?.detail || 'Failed to fetch resume history');
@@ -182,10 +327,29 @@ export class CandidateResumeService {
     return res.json();
   }
 
-  static async retryResumeProcessing(resumeId: string): Promise<any> {
+  /**
+   * Retry processing for a failed resume.
+   */
+  static async retryResumeProcessing(resumeId: string): Promise<ResumeProcessingResponse> {
     if (!RESUME_BACKEND_READY) {
       await mockDelay(300);
-      return { success: true, message: 'Processing retried successfully' };
+      return {
+        success: true,
+        message: 'Processing retried successfully',
+        resume: {
+          id: resumeId,
+          candidate_profile_id: 'default',
+          original_filename: 'resume.pdf',
+          mime_type: 'application/pdf',
+          file_extension: '.pdf',
+          file_size_bytes: 1200000,
+          status: 'processed',
+          version: 1,
+          is_current: true,
+          uploaded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        },
+      };
     }
     const res = await apiClient.post(`/api/v1/candidates/me/resumes/${resumeId}/retry`, {});
     if (!res.ok) {
@@ -195,5 +359,3 @@ export class CandidateResumeService {
     return res.json();
   }
 }
-
-

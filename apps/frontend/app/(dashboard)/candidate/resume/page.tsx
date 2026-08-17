@@ -1,177 +1,331 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Upload, FileText, Bot, ArrowRight, Eye, RefreshCw, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 import { useResume } from '@/hooks/useResume';
-import ResumeHeader from '@/components/resume/ResumeHeader';
-import ResumeStats from '@/components/resume/ResumeStats';
-import ResumeCompletion from '@/components/resume/ResumeCompletion';
-import ResumeViewer from '@/components/resume/ResumeViewer';
+import { useToast } from '@/hooks/useToast';
+import ResumeCurrentCard from '@/components/resume/ResumeCurrentCard';
+import ResumeDropzone from '@/components/resume/ResumeDropzone';
+import ResumeList from '@/components/resume/ResumeList';
+import ResumePreviewModal from '@/components/resume/ResumePreviewModal';
+import ResumeDeleteDialog from '@/components/resume/ResumeDeleteDialog';
+import ResumeRestoreDialog from '@/components/resume/ResumeRestoreDialog';
+import ResumeSkeleton from '@/components/resume/ResumeSkeleton';
+import ResumeEmptyState from '@/components/resume/ResumeEmptyState';
+import { BackendResume } from '@/types/resume';
+import {
+  FileText,
+  AlertTriangle,
+  RefreshCw,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  HardDrive,
+} from 'lucide-react';
 
 export default function ResumePage() {
-  const { resume, loading, error, fetchResume } = useResume();
-  const [activeTab, setActiveTab] = useState<'overview' | 'viewer'>('overview');
+  const {
+    resumes,
+    currentResume,
+    pagination,
+    sortBy,
+    sortOrder,
+    loading,
+    isRefreshing,
+    error,
+    isUploading,
+    uploadProgress,
+    uploadedFile,
+    actionLoading,
+    previewBlobUrl,
+    previewLoading,
+    previewError,
+    uploadResumeFile,
+    deleteResume,
+    restoreVersion,
+    retryProcessing,
+    processResume,
+    setPage,
+    setSorting,
+    refreshAll,
+    previewResumeFile,
+    downloadResumeFile,
+    clearPreview,
+  } = useResume();
 
-  useEffect(() => {
-    fetchResume();
-  }, [fetchResume]);
+  const { success: showSuccess, error: showError } = useToast();
+
+  // Modal and Dialog states
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string>('');
+  const [deleteTarget, setDeleteTarget] = useState<BackendResume | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<BackendResume | null>(null);
+
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+
+  // Upload handler
+  const handleFileUpload = async (file: File) => {
+    try {
+      const uploaded = await uploadResumeFile(file);
+      showSuccess(
+        'Resume uploaded successfully!',
+        `${file.name} is now stored securely in MinIO.`
+      );
+    } catch (err: any) {
+      showError('Upload Failed', err?.message || 'Failed to upload resume document.');
+    }
+  };
+
+  // Preview handler
+  const handleOpenPreview = async (id: string, name: string) => {
+    setPreviewId(id);
+    setPreviewName(name);
+    await previewResumeFile(id);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewId(null);
+    setPreviewName('');
+    clearPreview();
+  };
+
+  // Delete handlers
+  const handleOpenDelete = (resume: BackendResume) => {
+    setDeleteTarget(resume);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteResume(deleteTarget.id);
+      showSuccess('Resume deleted', `${deleteTarget.original_filename} (v${deleteTarget.version}) was removed.`);
+      setDeleteTarget(null);
+    } catch (err: any) {
+      showError('Delete Failed', err?.message || 'Could not delete resume.');
+    }
+  };
+
+  // Restore handlers
+  const handleOpenRestore = (resume: BackendResume) => {
+    setRestoreTarget(resume);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget) return;
+    try {
+      await restoreVersion(restoreTarget.id);
+      showSuccess(
+        'Version Restored',
+        `Version ${restoreTarget.version} (${restoreTarget.original_filename}) is now your active resume.`
+      );
+      setRestoreTarget(null);
+    } catch (err: any) {
+      showError('Restore Failed', err?.message || 'Could not restore resume version.');
+    }
+  };
+
+  // Retry processing
+  const handleRetryProcessing = async (id: string) => {
+    try {
+      await retryProcessing(id);
+      showSuccess('Processing Started', 'Resume processing has been restarted.');
+    } catch (err: any) {
+      showError('Retry Failed', err?.message || 'Could not restart processing.');
+    }
+  };
+
+  // Trigger processing
+  const handleProcess = async (id: string) => {
+    try {
+      await processResume(id);
+      showSuccess('Processing Complete', 'Resume parsed and verified.');
+    } catch (err: any) {
+      showError('Processing Failed', err?.message || 'Could not process resume.');
+    }
+  };
+
+  const scrollToUpload = () => {
+    dropzoneRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <RefreshCw className="animate-spin text-[#2563EB]" size={36} />
-        <p className="text-sm font-semibold text-[#64748B]">Loading resume dashboard...</p>
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+        <ResumeSkeleton />
       </div>
     );
   }
 
-  if (error || !resume) {
-    return (
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-4">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto">
-            <AlertTriangle size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-[#0F172A] text-lg">Failed to load resume</h3>
-            <p className="text-sm text-[#64748B] mt-1">{error || 'No active resume found.'}</p>
-          </div>
+  return (
+    <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto text-[#0F172A]">
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
+            Resumes
+          </h1>
+          <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            Upload, manage, preview, version and organize your professional resumes.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => fetchResume()}
-            className="inline-flex items-center justify-center gap-2 bg-[#2563EB] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#1D4ED8] transition-colors cursor-pointer"
+            onClick={() => refreshAll()}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#475569] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] transition-colors cursor-pointer disabled:opacity-50"
+            title="Refresh list"
           >
-            Retry Fetching
+            <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-[#2563EB]' : ''} />
+            {isRefreshing ? 'Syncing...' : 'Sync'}
           </button>
         </div>
       </div>
-    );
-  }
 
-  // Define missing sections and optimization suggestions for the dashboard based on candidate details
-  const missingSections = [
-    'LinkedIn Link',
-    'GitHub Link',
-    'Cloud container tools (Kubernetes)',
-  ];
-
-  const optimizationSuggestions = [
-    'Your technical skills score is 95% — high compatibility with frontend positions.',
-    'Add links: GitHub profile, LinkedIn, portfolio website to increase visibility.',
-    'Quantify your projects: include active user counts, conversion metrics, or package downloads.',
-  ];
-
-  return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header section */}
-      <ResumeHeader
-        title="Resume Dashboard"
-        fileName={resume.name}
-        version={resume.version}
-        lastUpdated={resume.lastUpdated}
-      />
-
-      {/* Quick stats cards */}
-      <ResumeStats
-        score={resume.profileCompletion + 7} // Score matches overall analysis (92%)
-        completion={resume.profileCompletion}
-        status={resume.resumeStatus}
-        lastUpdated={resume.lastUpdated}
-      />
-
-      {/* Tabs selector */}
-      <div className="flex border-b border-[#E2E8F0]">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`pb-3 text-sm font-semibold border-b-2 px-4 transition-colors cursor-pointer ${
-            activeTab === 'overview'
-              ? 'border-[#2563EB] text-[#2563EB]'
-              : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          Resume Overview
-        </button>
-        <button
-          onClick={() => setActiveTab('viewer')}
-          className={`pb-3 text-sm font-semibold border-b-2 px-4 transition-colors cursor-pointer ${
-            activeTab === 'viewer'
-              ? 'border-[#2563EB] text-[#2563EB]'
-              : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          View Parsed Resume
-        </button>
-      </div>
-
-      {/* Tab contents */}
-      {activeTab === 'overview' ? (
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Quick module entry cards */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                {
-                  icon: Upload,
-                  title: 'Upload Resume',
-                  desc: 'Add or update your resume file to begin the parsing and analysis process.',
-                  href: '/candidate/resume/upload',
-                  color: 'bg-blue-50 text-blue-600 border-blue-100',
-                  actionText: 'Upload New File',
-                },
-                {
-                  icon: Bot,
-                  title: 'AI Analysis & Recommendations',
-                  desc: 'Review extracted skills, experience summaries, project details, and recommendations.',
-                  href: '/candidate/resume/analysis',
-                  color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-                  actionText: 'Review Analysis',
-                },
-              ].map(({ icon: Icon, title, desc, href, color, actionText }) => (
-                <div
-                  key={title}
-                  className="bg-white border border-[#E2E8F0] rounded-2xl p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
-                >
-                  <div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border mb-3 ${color}`}>
-                      <Icon size={20} />
-                    </div>
-                    <h3 className="font-bold text-[#0F172A] text-base mb-2">{title}</h3>
-                    <p className="text-xs text-[#64748B] leading-relaxed mb-6">{desc}</p>
-                  </div>
-                  <Link
-                    href={href}
-                    className="inline-flex items-center justify-center gap-2 bg-[#2563EB] text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-[#1D4ED8] transition-colors w-full cursor-pointer"
-                  >
-                    {actionText}
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              ))}
-            </div>
-
-            {/* Resume Summary Card */}
-            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm space-y-3">
-              <div className="flex items-center gap-2">
-                <FileText size={18} className="text-[#2563EB]" />
-                <h3 className="font-bold text-[#0F172A] text-base">Summary Statement</h3>
-              </div>
-              <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">{resume.summary}</p>
-            </div>
+      {/* Global Error Banner if any */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm text-red-800 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle size={18} className="text-red-600 flex-shrink-0" />
+            <span>{error}</span>
           </div>
+          <button
+            onClick={() => refreshAll()}
+            className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-900 rounded-lg font-bold text-xs transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
-          {/* Right side completions panel */}
-          <div>
-            <ResumeCompletion
-              completionPercentage={resume.profileCompletion}
-              missingSections={missingSections}
-              suggestions={optimizationSuggestions}
+      {/* Main Content Layout */}
+      {resumes.length === 0 ? (
+        <div className="space-y-6">
+          <ResumeEmptyState onUploadClick={scrollToUpload} />
+
+          <div ref={dropzoneRef} className="max-w-2xl mx-auto">
+            <ResumeDropzone
+              onFileSelect={handleFileUpload}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              uploadedFile={uploadedFile}
             />
           </div>
         </div>
       ) : (
-        /* Full Profile Viewer Tab */
-        <ResumeViewer resume={resume} />
+        <div className="space-y-6">
+          {/* Current Active Resume Card */}
+          {currentResume && (
+            <ResumeCurrentCard
+              resume={currentResume}
+              onPreview={handleOpenPreview}
+              onDownload={downloadResumeFile}
+              onDelete={handleOpenDelete}
+              onRetry={handleRetryProcessing}
+              isActionLoading={!!actionLoading[currentResume.id]}
+            />
+          )}
+
+          {/* Grid: Upload Dropzone & Storage Security Info */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div ref={dropzoneRef} className="lg:col-span-2">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-[#0F172A]">Upload New Version</h3>
+                  <span className="text-[11px] text-[#64748B]">Auto-increments version</span>
+                </div>
+                <ResumeDropzone
+                  onFileSelect={handleFileUpload}
+                  isUploading={isUploading}
+                  uploadProgress={uploadProgress}
+                  uploadedFile={uploadedFile}
+                />
+              </div>
+            </div>
+
+            {/* Storage & Versioning Feature Card */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <h4 className="font-bold text-sm">Enterprise Storage</h4>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Documents are encrypted in private MinIO object storage with automatic rollback compensation and SHA-256 integrity checks.
+                </p>
+                <ul className="space-y-1.5 text-xs text-slate-300">
+                  <li className="flex items-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-400" />
+                    <span>Automatic version numbering</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-400" />
+                    <span>One-click instant version restore</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-400" />
+                    <span>Zero public credential exposure</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-3 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Active versions: {resumes.length}</span>
+                <span className="text-emerald-400 font-semibold">Protected</span>
+              </div>
+            </div>
+          </div>
+
+          {/* All Uploads & Version History Table */}
+          <ResumeList
+            resumes={resumes}
+            pagination={pagination}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            actionLoading={actionLoading}
+            onPageChange={setPage}
+            onSortChange={setSorting}
+            onPreview={handleOpenPreview}
+            onDownload={downloadResumeFile}
+            onRestore={handleOpenRestore}
+            onDelete={handleOpenDelete}
+            onRetry={handleRetryProcessing}
+            onProcess={handleProcess}
+          />
+        </div>
       )}
+
+      {/* Preview Modal */}
+      <ResumePreviewModal
+        isOpen={!!previewId}
+        resumeId={previewId}
+        filename={previewName}
+        blobUrl={previewBlobUrl}
+        isLoading={previewLoading}
+        error={previewError}
+        onClose={handleClosePreview}
+        onDownload={downloadResumeFile}
+        onRetry={() => previewId && previewResumeFile(previewId)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ResumeDeleteDialog
+        isOpen={!!deleteTarget}
+        resume={deleteTarget}
+        isLoading={deleteTarget ? actionLoading[deleteTarget.id] === 'delete' : false}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* Restore Confirmation Dialog */}
+      <ResumeRestoreDialog
+        isOpen={!!restoreTarget}
+        resume={restoreTarget}
+        isLoading={restoreTarget ? actionLoading[restoreTarget.id] === 'restore' : false}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={handleConfirmRestore}
+      />
     </div>
   );
 }

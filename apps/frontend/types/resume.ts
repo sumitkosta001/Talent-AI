@@ -1,3 +1,47 @@
+export type ResumeStatus = 'uploaded' | 'processing' | 'processed' | 'failed';
+
+export interface BackendResume {
+  id: string;
+  candidate_profile_id: string;
+  original_filename: string;
+  mime_type: string;
+  file_extension: string;
+  file_size_bytes: number;
+  status: ResumeStatus;
+  version: number;
+  is_current: boolean;
+  storage_provider?: string | null;
+  bucket_name?: string | null;
+  object_key?: string | null;
+  uploaded_at: string;
+  processing_started_at?: string | null;
+  processing_completed_at?: string | null;
+  failure_reason?: string | null;
+  created_at: string;
+}
+
+export interface PaginatedResumeResponse {
+  items: BackendResume[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface ResumeProcessingResponse {
+  success: boolean;
+  message: string;
+  resume: BackendResume;
+}
+
+export interface ResumeRestoreResponse {
+  success: boolean;
+  message: string;
+  resume: BackendResume;
+}
+
 export interface CandidateResume {
   id: string;
   name: string;
