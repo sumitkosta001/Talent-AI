@@ -35,6 +35,12 @@ from app.exceptions.resume import (
     UnsafeFilenameError,
     ResumeParsingError,
     MissingFileError,
+    ResumeNotFoundError,
+    ResumeStorageObjectNotFoundError,
+    ResumeAlreadyCurrentError,
+    ResumeProcessingConflictError,
+    ResumeAlreadyProcessedError,
+    ResumeNotRetryableError,
 )
 
 __all__ = [
@@ -67,5 +73,12 @@ __all__ = [
     "UnsafeFilenameError",
     "ResumeParsingError",
     "MissingFileError",
+    "ResumeNotFoundError",
+    "ResumeStorageObjectNotFoundError",
+    "ResumeAlreadyCurrentError",
+    "ResumeProcessingConflictError",
+    "ResumeAlreadyProcessedError",
+    "ResumeNotRetryableError",
 ]
+
 

@@ -1,0 +1,21 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: talentai-minio
+    restart: unless-stopped
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    environment:
+      MINIO_ROOT_USER: talentai-admin
+      MINIO_ROOT_PASSWORD: CHANGE_THIS_TO_A_LONG_RANDOM_PASSWORD
+
+    volumes:
+      - minio_data:/data
+
+    command: server /data --console-address ":9001"
+
+volumes:
+  minio_data:

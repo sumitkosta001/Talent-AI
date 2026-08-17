@@ -66,7 +66,7 @@ export default function ResumePage() {
       {/* Header section */}
       <ResumeHeader
         title="Resume Dashboard"
-        fileName="Alex_Johnson_Resume_v3.pdf"
+        fileName={resume.name}
         version={resume.version}
         lastUpdated={resume.lastUpdated}
       />

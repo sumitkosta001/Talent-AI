@@ -53,8 +53,8 @@ def make_oversized_content(size_mb: int = 11) -> bytes:
 
 async def run_resume_upload_tests():
     """Execute all resume upload integration tests."""
-    from unittest.mock import patch
-    patcher = patch("app.services.email_service.EmailService.send_verification_email", return_value=True)
+    from unittest.mock import patch, AsyncMock
+    patcher = patch("app.services.email_service.EmailService.send_verification_email", new_callable=AsyncMock)
     patcher.start()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:

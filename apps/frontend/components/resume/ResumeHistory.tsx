@@ -1,14 +1,16 @@
 import React from 'react';
-import { FileText, Clock, Trash2, Eye } from 'lucide-react';
+import { FileText, Clock, Trash2, Eye, Download, Bot } from 'lucide-react';
 import { ResumeHistory as HistoryType } from '../../types/resume';
 import Link from 'next/link';
 
 interface ResumeHistoryProps {
   history: HistoryType[];
   onDelete: (id: string) => void;
+  onPreview: (id: string, name: string) => void;
+  onDownload: (id: string, name: string) => void;
 }
 
-export default function ResumeHistory({ history, onDelete }: ResumeHistoryProps) {
+export default function ResumeHistory({ history, onDelete, onPreview, onDownload }: ResumeHistoryProps) {
   if (history.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 text-center">
@@ -36,28 +38,42 @@ export default function ResumeHistory({ history, onDelete }: ResumeHistoryProps)
                 {date} · {size}
               </p>
             </div>
-            <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="text-right hidden sm:block">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="text-right hidden sm:block mr-2">
                 <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-wider">ATS Score</p>
                 <p className="text-sm font-bold text-[#2563EB]">{score}%</p>
               </div>
-              <span className="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-0.5 rounded-full border border-green-100">
+              <span className="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-0.5 rounded-full border border-green-100 mr-1">
                 {status}
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => onPreview(id, name)}
+                  className="p-1.5 text-[#94A3B8] hover:text-[#2563EB] rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                  title="Preview File"
+                >
+                  <Eye size={14} />
+                </button>
+                <button
+                  onClick={() => onDownload(id, name)}
+                  className="p-1.5 text-[#94A3B8] hover:text-[#2563EB] rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                  title="Download File"
+                >
+                  <Download size={14} />
+                </button>
                 <Link
                   href="/candidate/resume/analysis"
-                  className="p-1.5 text-[#94A3B8] hover:text-[#2563EB] rounded-lg hover:bg-blue-50 transition-colors"
-                  title="View Analysis"
+                  className="p-1.5 text-[#94A3B8] hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                  title="View AI Analysis"
                 >
-                  <Eye size={15} />
+                  <Bot size={14} />
                 </Link>
                 <button
                   onClick={() => onDelete(id)}
                   className="p-1.5 text-[#94A3B8] hover:text-[#EF4444] rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                   title="Delete Entry"
                 >
-                  <Trash2 size={15} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>

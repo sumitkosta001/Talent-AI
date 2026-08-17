@@ -13,17 +13,23 @@ from app.auth.jwt import create_access_token
 
 
 async def run_candidate_profile_tests():
-    from unittest.mock import patch
-    patcher = patch("app.services.email_service.EmailService.send_verification_email", return_value=True)
+    from unittest.mock import patch, AsyncMock
+    patcher = patch("app.services.email_service.EmailService.send_verification_email", new_callable=AsyncMock)
     patcher.start()
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+
 
 
 
         print("\n============================================================")
         print("RUNNING CANDIDATE PROFILE INTEGRATION TESTS")
         print("============================================================")
+
+        # Warm up remote database connection pool
+        async with SessionLocal() as db:
+            from sqlalchemy import text
+            await db.execute(text("SELECT 1"))
 
         # 1. SETUP: Create two test users (Candidate A and Candidate B) and one Recruiter.
         # We will register them and bypass email verification constraints by marking them verified in db.
@@ -64,6 +70,8 @@ async def run_candidate_profile_tests():
         })
         assert reg_res_r.status_code == 201, reg_res_r.text
         recruiter_id = reg_res_r.json()["user"]["id"]
+
+
 
         # Update user statuses directly in DB (mark verified, update recruiter role)
         async with SessionLocal() as db:

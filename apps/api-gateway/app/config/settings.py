@@ -104,7 +104,8 @@ class DatabaseSettings(BaseAppSettings):
     pool_timeout: int = Field(30, validation_alias="DATABASE_POOL_TIMEOUT")
     pool_recycle: int = Field(1800, validation_alias="DATABASE_POOL_RECYCLE")
     pool_pre_ping: bool = Field(True, validation_alias="DATABASE_POOL_PRE_PING")
-    connect_timeout: int = Field(10, validation_alias="DATABASE_CONNECT_TIMEOUT")
+    connect_timeout: int = Field(30, validation_alias="DATABASE_CONNECT_TIMEOUT")
+
 
     @field_validator("url")
     @classmethod
@@ -255,6 +256,17 @@ class ResumeSettings(BaseAppSettings):
         return [mt.strip() for mt in self.allowed_mime_types.split(",") if mt.strip()]
 
 
+class MinioSettings(BaseAppSettings):
+    """MinIO Object Storage configuration settings."""
+
+    endpoint: str = Field("127.0.0.1:9000", validation_alias="MINIO_ENDPOINT")
+    access_key: str = Field("talentai-admin", validation_alias="MINIO_ACCESS_KEY")
+    secret_key: str = Field(..., validation_alias="MINIO_SECRET_KEY")
+    secure: bool = Field(False, validation_alias="MINIO_SECURE")
+    bucket: str = Field("talentai-resumes", validation_alias="MINIO_BUCKET")
+    region: str = Field("us-east-1", validation_alias="MINIO_REGION")
+
+
 class Settings:
     """Master Application Configuration Container."""
 
@@ -270,7 +282,9 @@ class Settings:
     monitoring = MonitoringSettings()
     celery = CelerySettings()
     resume = ResumeSettings()
+    minio = MinioSettings()
 
 
 settings = Settings()
+
 

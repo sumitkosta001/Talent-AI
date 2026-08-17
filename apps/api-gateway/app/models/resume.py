@@ -118,9 +118,33 @@ class Resume(BaseModel):
     is_current: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
+        index=True,
         default=True,
         server_default=text("true"),
         doc="Whether this resume is the candidate's currently active resume.",
+    )
+
+    storage_provider: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        default="minio",
+        server_default=text("'minio'"),
+        doc="Storage provider name (e.g., 'minio').",
+    )
+
+    bucket_name: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        default="talentai-resumes",
+        server_default=text("'talentai-resumes'"),
+        doc="S3 bucket name where the file is stored.",
+    )
+
+    object_key: Mapped[Optional[str]] = mapped_column(
+        String(1024),
+        nullable=True,
+        unique=True,
+        doc="S3 object key for the stored resume file.",
     )
 
     uploaded_at: Mapped[datetime] = mapped_column(
@@ -130,6 +154,26 @@ class Resume(BaseModel):
         server_default=text("now()"),
         doc="UTC timestamp when the resume file was received by the server.",
     )
+
+    processing_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="UTC timestamp when resume processing/parsing started.",
+    )
+
+    processing_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="UTC timestamp when resume processing/parsing completed.",
+    )
+
+    failure_reason: Mapped[Optional[str]] = mapped_column(
+        String(1000),
+        nullable=True,
+        doc="Safe human-readable failure reason message if processing failed.",
+    )
+
+
 
     # ======================================================================
     # RELATIONSHIPS

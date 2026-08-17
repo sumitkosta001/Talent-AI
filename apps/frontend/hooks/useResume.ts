@@ -11,6 +11,7 @@ import { MOCK_PROJECTS } from '@/mock/projects';
 import { MOCK_PORTFOLIO } from '@/mock/portfolio';
 import { MOCK_SKILLS } from '@/mock/skills';
 import { mockDelay } from '@/lib/mockDelay';
+import { RESUME_BACKEND_READY } from '@/lib/config';
 
 export function useResume() {
   const [resume, setResume] = useState<(CandidateResume & Resume) | null>(null);
@@ -24,6 +25,11 @@ export function useResume() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploaded, setIsUploaded] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<any>(null);
+
+  // Preview and Download states
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const fetchResumeData = useCallback(async () => {
     setLoading(true);
@@ -132,14 +138,88 @@ export function useResume() {
   }, []);
 
   const fetchHistory = useCallback(async () => {
-    const userStored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
-    const user = userStored ? JSON.parse(userStored) : null;
-    const namePrefix = user?.name ? user.name.replace(/\s+/g, '_') : 'Alex_Johnson';
-    const mockH: ResumeHistory[] = [
-      { id: '1', name: `${namePrefix}_Resume_2026.pdf`, size: '1.2 MB', date: 'Jul 10, 2025', status: 'Parsed', score: 87 },
-    ];
-    setHistory(mockH);
+    setError(null);
+    try {
+      const data = await CandidateResumeService.getResumes(1, 20);
+      const items = data.items || [];
+      const mapped: ResumeHistory[] = items.map((item: any) => {
+        const sizeKb = (item.file_size_bytes || 0) / 1024;
+        const sizeStr = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb.toFixed(1)} KB`;
+        
+        let statusStr: 'Parsed' | 'Processing' | 'Failed' | 'Analyzed' = 'Parsed';
+        if (item.status === 'processed') {
+          statusStr = 'Parsed';
+        } else if (item.status === 'failed') {
+          statusStr = 'Failed';
+        } else {
+          statusStr = 'Processing';
+        }
+
+        return {
+          id: item.id,
+          name: item.original_filename,
+          size: sizeStr,
+          date: item.uploaded_at 
+            ? new Date(item.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'N/A',
+          status: statusStr,
+          score: item.atsScore || 87,
+        };
+      });
+      setHistory(mapped);
+    } catch (err: any) {
+      console.error('Failed to retrieve upload history:', err);
+      // Fallback for DEV mode only if backend request crashed
+      if (!RESUME_BACKEND_READY) {
+        const userStored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
+        const user = userStored ? JSON.parse(userStored) : null;
+        const namePrefix = user?.name ? user.name.replace(/\s+/g, '_') : 'Alex_Johnson';
+        setHistory([
+          { id: '1', name: `${namePrefix}_Resume_2026.pdf`, size: '1.2 MB', date: 'Jul 10, 2025', status: 'Parsed', score: 87 }
+        ]);
+      }
+    }
   }, []);
+
+  const previewResumeFile = useCallback(async (id: string): Promise<string | null> => {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const blob = await CandidateResumeService.previewResume(id);
+      const url = URL.createObjectURL(blob);
+      setPreviewBlobUrl(url);
+      return url;
+    } catch (err: any) {
+      setPreviewError(err?.message || 'Failed to open file preview.');
+      return null;
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
+  const downloadResumeFile = useCallback(async (id: string, filename: string): Promise<void> => {
+    try {
+      const blob = await CandidateResumeService.downloadResume(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to download file.');
+    }
+  }, []);
+
+  const clearPreview = useCallback(() => {
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+    }
+    setPreviewError(null);
+  }, [previewBlobUrl]);
 
   const uploadResumeFile = useCallback(async (file: File) => {
     setIsUploading(true);
@@ -148,28 +228,21 @@ export function useResume() {
     try {
       setUploadProgress(40);
       await CandidateResumeService.uploadResume(file);
+      setUploadProgress(80);
+      
+      // Refetch history and active resume to sync dashboard with uploaded resume state
+      await fetchHistory();
+      await fetchResumeData();
+      
       setUploadProgress(100);
       setIsUploaded(true);
       setUploadedFile({ name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB` });
-
-      const newItem: ResumeHistory = {
-        id: String(Date.now()),
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        status: 'Parsed',
-        score: 87,
-      };
-      setHistory((prev) => [newItem, ...prev]);
-      
-      // Refetch details to sync dashboard with uploaded resume state
-      await fetchResumeData();
     } catch (err: any) {
       setError(err?.message || 'Failed to upload resume file.');
     } finally {
       setIsUploading(false);
     }
-  }, [fetchResumeData]);
+  }, [fetchHistory, fetchResumeData]);
 
   const deleteHistoryItem = useCallback((id: string) => {
     setHistory((prev) => prev.filter((item) => item.id !== id));
@@ -178,6 +251,15 @@ export function useResume() {
   useEffect(() => {
     fetchResumeData();
   }, [fetchResumeData]);
+
+  // Clean up blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewBlobUrl) {
+        URL.revokeObjectURL(previewBlobUrl);
+      }
+    };
+  }, [previewBlobUrl]);
 
   return {
     resume,
@@ -189,11 +271,17 @@ export function useResume() {
     uploadProgress,
     isUploaded,
     uploadedFile,
+    previewBlobUrl,
+    previewLoading,
+    previewError,
     fetchResume: fetchResumeData,
     fetchAnalysis: fetchAnalysisData,
     fetchHistory,
     uploadResumeFile,
     deleteHistoryItem,
+    previewResumeFile,
+    downloadResumeFile,
+    clearPreview,
     refetch: fetchResumeData,
   };
 }
