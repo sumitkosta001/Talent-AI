@@ -17,6 +17,7 @@ import asyncio
 import io
 import sys
 import uuid
+import pytest
 import docx
 import pymupdf
 from datetime import datetime, timezone
@@ -490,5 +491,11 @@ async def run_resume_extraction_tests():
             sys.exit(1)
 
 
+@pytest.mark.asyncio
+async def test_resume_extraction():
+    await run_resume_extraction_tests()
+
+
 if __name__ == "__main__":
     asyncio.run(run_resume_extraction_tests())
+
