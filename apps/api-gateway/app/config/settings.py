@@ -261,10 +261,11 @@ class MinioSettings(BaseAppSettings):
 
     endpoint: str = Field("127.0.0.1:9000", validation_alias="MINIO_ENDPOINT")
     access_key: str = Field("talentai-admin", validation_alias="MINIO_ACCESS_KEY")
-    secret_key: str = Field(..., validation_alias="MINIO_SECRET_KEY")
+    secret_key: str = Field("CHANGE_THIS_TO_A_LONG_RANDOM_PASSWORD", validation_alias="MINIO_SECRET_KEY")
     secure: bool = Field(False, validation_alias="MINIO_SECURE")
     bucket: str = Field("talentai-resumes", validation_alias="MINIO_BUCKET")
     region: str = Field("us-east-1", validation_alias="MINIO_REGION")
+
 
 
 class Settings:

@@ -34,10 +34,17 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 
 
 def make_valid_pdf_content(size_bytes: int = 1024) -> bytes:
-    """Generate valid PDF content with correct magic bytes."""
-    header = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n"
-    padding = b"0" * max(0, size_bytes - len(header))
-    return header + padding
+    """Generate valid PDF content with correct structure and extractable text."""
+    import pymupdf
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((50, 72), "John Doe\nSoftware Engineer\nExperience: Google, Microsoft\nEducation: NIT Rourkela")
+    pdf_bytes = doc.write()
+    doc.close()
+    if len(pdf_bytes) < size_bytes:
+        pdf_bytes += b" " * (size_bytes - len(pdf_bytes))
+    return pdf_bytes
+
 
 
 async def upload_resume_file(client, headers, filename="test.pdf", size=1024):

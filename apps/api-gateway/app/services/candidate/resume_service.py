@@ -38,6 +38,8 @@ from app.exceptions.resume import (
     ResumeAlreadyProcessedError,
     ResumeNotRetryableError,
 )
+from app.services.resume_processing import extract_document
+
 from app.exceptions.candidate import CandidateProfileNotFoundError
 from app.exceptions.storage import StorageError, MinioDeleteError
 
@@ -504,12 +506,24 @@ class ResumeService:
 
             # Validate object stream can be read
             stream = self.storage_service.get_object(resume.bucket_name, resume.object_key)
-            data = stream.read(1024)
-            stream.close()
-            stream.release_conn()
+            try:
+                file_bytes = stream.read()
+            finally:
+                stream.close()
+                stream.release_conn()
 
-            if not data:
+            if not file_bytes:
                 raise Exception("Uploaded document is empty.")
+
+            # Perform real PDF/DOCX text & structure extraction
+            extracted_doc = extract_document(
+                content=file_bytes,
+                extension=resume.file_extension,
+                mime_type=resume.mime_type,
+            )
+
+            if extracted_doc is None:
+                raise Exception("Document extraction produced no output.")
 
             # Transition to PROCESSED on success
             resume.status = ResumeStatus.PROCESSED
@@ -519,10 +533,11 @@ class ResumeService:
             await self.resume_repo.db.refresh(resume)
 
             logger.info(
-                "Resume processing completed successfully: profile=%s, resume=%s, version=%d",
-                profile.id, resume.id, resume.version,
+                "Resume processing completed successfully: profile=%s, resume=%s, version=%d, chars=%d, pages=%d",
+                profile.id, resume.id, resume.version, extracted_doc.character_count, extracted_doc.page_count,
             )
             return resume
+
 
         except Exception as exc:
             # Safe failure reason sanitization (prevent leaking credentials, stack traces)

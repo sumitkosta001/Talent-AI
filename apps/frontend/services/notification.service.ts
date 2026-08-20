@@ -1,4 +1,4 @@
-import { DEV_MODE } from '@/lib/config';
+import { DEV_MODE, NOTIFICATIONS_BACKEND_READY } from '@/lib/config';
 import { mockDelay } from '@/lib/mockDelay';
 import { Notification, NotificationStats } from '@/types/notification';
 import { MOCK_NOTIFICATIONS } from '@/mock/notifications';
@@ -21,10 +21,11 @@ export class NotificationService {
   }
 
   static async getNotifications(): Promise<Notification[]> {
-    if (DEV_MODE) {
+    if (DEV_MODE || !NOTIFICATIONS_BACKEND_READY) {
       await mockDelay(200);
       return this.getLocalNotifications();
     }
+
 
     const res = await fetch('/api/notifications');
     if (!res.ok) throw new Error('Failed to fetch notifications');
