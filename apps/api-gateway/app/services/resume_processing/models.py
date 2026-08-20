@@ -30,6 +30,9 @@ class DocumentPage(BaseModel):
     character_count: int = 0
     word_count: int = 0
     has_extractable_text: bool = True
+    extraction_method: str = "native"  # "native" or "ocr" (Day 22)
+    ocr_confidence: Optional[float] = None  # Average OCR confidence 0-100 (Day 22)
+    image_count: int = 0  # Number of images detected on the page (Day 22)
 
 
 class DocumentTableCell(BaseModel):
@@ -79,6 +82,19 @@ class DocumentMetadata(BaseModel):
     custom: Dict[str, Any] = Field(default_factory=dict)
 
 
+class OCRMetadata(BaseModel):
+    """Day 22 OCR detection and processing statistics for a document."""
+
+    ocr_required: bool = False
+    pages_requiring_ocr: List[int] = Field(default_factory=list)
+    ocr_pages_count: int = 0
+    native_text_character_count: int = 0
+    pages_ocr_succeeded: List[int] = Field(default_factory=list)
+    pages_ocr_failed: List[int] = Field(default_factory=list)
+    average_ocr_confidence: Optional[float] = None
+    ocr_processing_duration_seconds: Optional[float] = None
+
+
 class ExtractedDocument(BaseModel):
     """Unified internal representation of an extracted resume document.
 
@@ -88,7 +104,7 @@ class ExtractedDocument(BaseModel):
 
     text: str  # Normalized combined full text
     document_type: str  # 'pdf' or 'docx'
-    extraction_method: str  # 'pymupdf' or 'python-docx'
+    extraction_method: str  # 'pymupdf', 'python-docx', or 'hybrid' (native+ocr)
     page_count: int = 1
     pages: List[DocumentPage] = Field(default_factory=list)
     paragraphs: List[DocumentParagraph] = Field(default_factory=list)
@@ -97,3 +113,4 @@ class ExtractedDocument(BaseModel):
     character_count: int = 0
     word_count: int = 0
     has_extractable_text: bool = True  # Signal for Day 22 OCR if False
+    ocr_metadata: Optional[OCRMetadata] = None  # Day 22 OCR statistics

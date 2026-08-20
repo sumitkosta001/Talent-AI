@@ -267,6 +267,17 @@ class MinioSettings(BaseAppSettings):
     region: str = Field("us-east-1", validation_alias="MINIO_REGION")
 
 
+class OCRSettings(BaseAppSettings):
+    """OCR (Tesseract) configuration settings for Day 22 scanned PDF processing."""
+
+    tesseract_cmd: str = Field("", validation_alias="TESSERACT_CMD")
+    ocr_language: str = Field("eng", validation_alias="OCR_LANGUAGE")
+    ocr_render_dpi: int = Field(300, validation_alias="OCR_RENDER_DPI")
+    ocr_min_text_chars_per_page: int = Field(30, validation_alias="OCR_MIN_TEXT_CHARS_PER_PAGE")
+    ocr_psm: int = Field(6, validation_alias="OCR_PSM")
+    ocr_upscale_factor: float = Field(2.0, validation_alias="OCR_UPSCALE_FACTOR")
+    ocr_threshold_value: int = Field(180, validation_alias="OCR_THRESHOLD_VALUE")
+
 
 class Settings:
     """Master Application Configuration Container."""
@@ -284,8 +295,8 @@ class Settings:
     celery = CelerySettings()
     resume = ResumeSettings()
     minio = MinioSettings()
+    ocr = OCRSettings()
 
 
 settings = Settings()
-
 
