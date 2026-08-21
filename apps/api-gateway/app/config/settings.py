@@ -279,6 +279,14 @@ class OCRSettings(BaseAppSettings):
     ocr_threshold_value: int = Field(180, validation_alias="OCR_THRESHOLD_VALUE")
 
 
+class NLPSettings(BaseAppSettings):
+    """NLP and spaCy configuration settings for Day 24 skills extraction."""
+
+    spacy_model: str = Field("en_core_web_sm", validation_alias="SPACY_MODEL")
+    skill_match_case_insensitive: bool = Field(True, validation_alias="SKILL_MATCH_CASE_INSENSITIVE")
+    skill_min_confidence: float = Field(0.5, validation_alias="SKILL_MIN_CONFIDENCE")
+
+
 class Settings:
     """Master Application Configuration Container."""
 
@@ -296,7 +304,9 @@ class Settings:
     resume = ResumeSettings()
     minio = MinioSettings()
     ocr = OCRSettings()
+    nlp = NLPSettings()
 
 
 settings = Settings()
+
 

@@ -58,6 +58,10 @@ async def verify_port_accessibility(host: str, port: int) -> bool:
         return False
 
 
+import pytest
+
+
+@pytest.mark.asyncio
 async def test_portquiz() -> None:
     """Helper diagnostic to verify if port 5432 is blocked universally by firewall."""
     print("3. Firewall Diagnosis - Checking universal port 5432 outbound access via portquiz.net...")

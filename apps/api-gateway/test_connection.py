@@ -81,5 +81,31 @@ async def run_diagnostic():
         await engine.dispose()
 
 
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_connection():
+    await run_diagnostic()
+
+
+@pytest.mark.asyncio
+async def test_database_connection_1():
+    """Verify async database connection and query in first event loop."""
+    from app.database.session import SessionLocal
+    async with SessionLocal() as db:
+        res = await db.execute(text("SELECT 1;"))
+        assert res.scalar() == 1
+
+
+@pytest.mark.asyncio
+async def test_database_connection_2():
+    """Verify async database connection and query in second (new) event loop."""
+    from app.database.session import SessionLocal
+    async with SessionLocal() as db:
+        res = await db.execute(text("SELECT 1;"))
+        assert res.scalar() == 1
+
+
 if __name__ == "__main__":
     asyncio.run(run_diagnostic())

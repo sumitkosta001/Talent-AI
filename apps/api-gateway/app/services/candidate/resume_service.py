@@ -38,7 +38,11 @@ from app.exceptions.resume import (
     ResumeAlreadyProcessedError,
     ResumeNotRetryableError,
 )
-from app.services.resume_processing import extract_document
+from app.services.resume_processing import (
+    extract_document,
+    process_extracted_document,
+    extract_skills,
+)
 
 from app.exceptions.candidate import CandidateProfileNotFoundError
 from app.exceptions.storage import StorageError, MinioDeleteError
@@ -525,6 +529,12 @@ class ResumeService:
             if extracted_doc is None:
                 raise Exception("Document extraction produced no output.")
 
+            # Perform Day 23 text cleaning, normalization, section detection & tokenization
+            processed_text = process_extracted_document(extracted_doc)
+
+            # Perform Day 24 hybrid skills extraction (spaCy + skill dictionary)
+            extracted_skills = extract_skills(processed_text)
+
             # Transition to PROCESSED on success
             resume.status = ResumeStatus.PROCESSED
             resume.processing_completed_at = datetime.now(timezone.utc)
@@ -533,8 +543,10 @@ class ResumeService:
             await self.resume_repo.db.refresh(resume)
 
             logger.info(
-                "Resume processing completed successfully: profile=%s, resume=%s, version=%d, chars=%d, pages=%d",
+                "Resume processing completed successfully: profile=%s, resume=%s, version=%d, chars=%d, pages=%d, sections=%d, tokens=%d, skills=%d (%d categories)",
                 profile.id, resume.id, resume.version, extracted_doc.character_count, extracted_doc.page_count,
+                len(processed_text.sections), len(processed_text.tokens),
+                extracted_skills.total_count, len(extracted_skills.categories),
             )
             return resume
 

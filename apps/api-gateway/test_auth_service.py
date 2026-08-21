@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.engine import engine
@@ -14,9 +14,8 @@ from app.schemas.auth import (
 )
 
 
-async def main():
+async def run_auth_service_tests():
     async with AsyncSession(engine) as db:
-
         user_repo = UserRepository(db)
         refresh_repo = RefreshTokenRepository(db)
 
@@ -42,9 +41,9 @@ async def main():
         )
 
         print(register_response)
+        assert register_response.user.email == email
 
         print("\n")
-
         print("=" * 70)
         print("TEST 2 - LOGIN")
         print("=" * 70)
@@ -57,9 +56,9 @@ async def main():
         )
 
         print(login_response)
+        assert login_response.tokens.access_token is not None
 
         print("\n")
-
         print("=" * 70)
         print("TEST 3 - REFRESH TOKEN")
         print("=" * 70)
@@ -71,9 +70,9 @@ async def main():
         )
 
         print(refresh_response)
+        assert refresh_response.tokens.access_token is not None
 
         print("\n")
-
         print("=" * 70)
         print("TEST 4 - CURRENT USER")
         print("=" * 70)
@@ -83,9 +82,9 @@ async def main():
         )
 
         print(current_user)
+        assert current_user.email == email
 
         print("\n")
-
         print("=" * 70)
         print("TEST 5 - LOGOUT")
         print("=" * 70)
@@ -97,7 +96,6 @@ async def main():
         print(logout)
 
         print("\n")
-
         print("=" * 70)
         print("TEST 6 - LOGOUT ALL DEVICES")
         print("=" * 70)
@@ -114,5 +112,10 @@ async def main():
         print("=" * 70)
 
 
+@pytest.mark.asyncio
+async def test_auth_service():
+    await run_auth_service_tests()
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_auth_service_tests())

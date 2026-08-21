@@ -148,4 +148,13 @@ async def main():
         print("=" * 70)
 
 
-asyncio.run(main())
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_repository():
+    await main()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
