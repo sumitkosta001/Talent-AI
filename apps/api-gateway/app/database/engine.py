@@ -2,8 +2,11 @@
 SQLAlchemy Async Engine Configuration
 """
 
+import os
+import sys
 import ssl
 
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     create_async_engine,
@@ -36,20 +39,41 @@ print("=" * 80)
 
 ssl_context = ssl.create_default_context()
 
-engine: AsyncEngine = create_async_engine(
-    db_url,
-    echo=settings.database.echo,
-    future=True,
-    pool_pre_ping=True,
-    pool_size=settings.database.pool_size,
-    max_overflow=settings.database.max_overflow,
-    pool_timeout=settings.database.pool_timeout,
-    pool_recycle=settings.database.pool_recycle,
-    connect_args={
-        "ssl": ssl_context,
-        "timeout": settings.database.connect_timeout,
-        "server_settings": {
-            "statement_timeout": "15000",
-        },
-    },
+is_testing = (
+    "pytest" in sys.modules
+    or os.environ.get("TESTING", "").lower() in ("true", "1")
+    or settings.app.app_env.lower() == "testing"
 )
+
+if is_testing:
+    engine: AsyncEngine = create_async_engine(
+        db_url,
+        echo=settings.database.echo,
+        future=True,
+        poolclass=NullPool,
+        connect_args={
+            "ssl": ssl_context,
+            "timeout": settings.database.connect_timeout,
+            "server_settings": {
+                "statement_timeout": "15000",
+            },
+        },
+    )
+else:
+    engine: AsyncEngine = create_async_engine(
+        db_url,
+        echo=settings.database.echo,
+        future=True,
+        pool_pre_ping=True,
+        pool_size=settings.database.pool_size,
+        max_overflow=settings.database.max_overflow,
+        pool_timeout=settings.database.pool_timeout,
+        pool_recycle=settings.database.pool_recycle,
+        connect_args={
+            "ssl": ssl_context,
+            "timeout": settings.database.connect_timeout,
+            "server_settings": {
+                "statement_timeout": "15000",
+            },
+        },
+    )

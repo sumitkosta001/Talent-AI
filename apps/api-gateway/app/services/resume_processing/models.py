@@ -114,3 +114,58 @@ class ExtractedDocument(BaseModel):
     word_count: int = 0
     has_extractable_text: bool = True  # Signal for Day 22 OCR if False
     ocr_metadata: Optional[OCRMetadata] = None  # Day 22 OCR statistics
+
+
+# Day 23 Text Processing & Section Detection Models
+
+class ProcessedSection(BaseModel):
+    """Represents a detected canonical section within a resume document."""
+
+    name: str  # Canonical name (e.g., 'EXPERIENCE', 'SKILLS', 'EDUCATION', 'PROJECTS', 'SUMMARY', 'UNKNOWN')
+    title: str  # Original heading text as found in the resume
+    content: str  # Text content belonging to this section
+    confidence: float = 1.0  # Heuristic detection confidence score (0.0 to 1.0)
+    start_line: int = 1  # 1-indexed start line number in normalized text
+    end_line: int = 1  # 1-indexed end line number in normalized text
+    page_number: Optional[int] = None  # Page number where section heading starts
+
+
+class ProcessedResumeText(BaseModel):
+    """Structured, cleaned, normalized, and tokenized representation of a resume for downstream NLP (Day 23).
+
+    Original ExtractedDocument is preserved intact for auditing and debugging.
+    """
+
+    cleaned_text: str  # Text with extraction noise, page numbers, and bad line breaks removed
+    normalized_text: str  # NFKC normalized, case-preserved human-readable text
+    lowercase_text: str  # Lowercase text for search and matching
+    sections: List[ProcessedSection] = Field(default_factory=list)  # Detected sections in document order
+    tokens: List[str] = Field(default_factory=list)  # Case-preserved tokens (technical terms intact)
+    normalized_tokens: List[str] = Field(default_factory=list)  # Lowercase tokens for indexing
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # Processing stats
+    original_document: ExtractedDocument  # Reference to original ExtractedDocument (not mutated)
+
+
+# Day 24 Skills Extraction Models
+
+class ExtractedSkill(BaseModel):
+    """Represents a single canonical skill extracted from a resume document (Day 24)."""
+
+    name: str  # Canonical display name (e.g. 'React.js', 'Python', 'PostgreSQL')
+    normalized_name: str  # Lowercase identifier (e.g. 'react.js', 'python', 'postgresql')
+    category: str  # Canonical category (e.g. 'FRONTEND', 'PROGRAMMING_LANGUAGE', 'DATABASE')
+    source: str = "dictionary"  # Extraction source ('dictionary', 'phrase_match', 'regex', 'ner', 'hybrid')
+    confidence: float = 0.95  # Heuristic confidence score (0.0 to 1.0)
+    matched_text: str  # Raw matched text string as found in resume text (e.g. 'ReactJS')
+    sections: List[str] = Field(default_factory=list)  # Sections where skill appeared e.g. ['SKILLS', 'PROJECTS']
+    mentions_count: int = 1  # Number of times skill was mentioned across document
+
+
+class ExtractedSkills(BaseModel):
+    """Container model for all extracted skills, counts, and category breakdowns (Day 24)."""
+
+    skills: List[ExtractedSkill] = Field(default_factory=list)  # Deduplicated list of extracted skills
+    total_count: int = 0  # Total unique skills extracted
+    categories: Dict[str, List[str]] = Field(default_factory=dict)  # Grouped canonical skill names by category
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # Processing stats (duration, spacy model, match count)
+

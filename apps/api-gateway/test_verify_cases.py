@@ -150,5 +150,14 @@ async def main():
         print("ALL VERIFICATION CASES VERIFIED SUCCESSFULLY")
         print("=" * 70)
 
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_verify_cases():
+    await main()
+
+
 if __name__ == "__main__":
     asyncio.run(main())
