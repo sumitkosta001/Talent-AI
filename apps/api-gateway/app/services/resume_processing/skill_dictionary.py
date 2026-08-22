@@ -398,6 +398,14 @@ SKILL_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "aliases": ["xgboost"],
         "category": "MACHINE_LEARNING",
     },
+    "spaCy": {
+        "aliases": ["spacy"],
+        "category": "LIBRARY",
+    },
+    "OpenCV": {
+        "aliases": ["opencv", "open-cv"],
+        "category": "LIBRARY",
+    },
     "LightGBM": {
         "aliases": ["lightgbm"],
         "category": "MACHINE_LEARNING",

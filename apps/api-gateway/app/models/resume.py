@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Integer, String, ForeignKey, text
+from sqlalchemy import Boolean, DateTime, Integer, String, ForeignKey, JSON, text
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -171,6 +171,36 @@ class Resume(BaseModel):
         String(1000),
         nullable=True,
         doc="Safe human-readable failure reason message if processing failed.",
+    )
+
+    structured_data: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        doc="Validated StructuredResume JSON payload containing extracted data (Day 28).",
+    )
+
+    processing_attempt: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default=text("1"),
+        doc="Monotonically increasing processing/reprocessing attempt counter.",
+    )
+
+    pipeline_version: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        default="phase4-day28",
+        server_default=text("'phase4-day28'"),
+        doc="Pipeline implementation version that generated the structured data.",
+    )
+
+    schema_version: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        default="1.0",
+        server_default=text("'1.0'"),
+        doc="Structured resume JSON schema version.",
     )
 
 
