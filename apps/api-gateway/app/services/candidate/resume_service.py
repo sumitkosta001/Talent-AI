@@ -42,6 +42,10 @@ from app.services.resume_processing import (
     extract_document,
     process_extracted_document,
     extract_skills,
+    extract_education,
+    extract_experience,
+    extract_projects,
+    build_structured_resume,
 )
 
 from app.exceptions.candidate import CandidateProfileNotFoundError
@@ -107,7 +111,7 @@ class ResumeService:
         Uses FOR UPDATE locking on the candidate profile row to serialize
         concurrent version generation for the same candidate.
         """
-        # 1. Get or create candidate profile
+        # 1. Resolve candidate profile
         profile = await self.profile_repo.get_by_user_id(user_id)
         if not profile:
             raise CandidateProfileNotFoundError()
@@ -535,6 +539,29 @@ class ResumeService:
             # Perform Day 24 hybrid skills extraction (spaCy + skill dictionary)
             extracted_skills = extract_skills(processed_text)
 
+            # Perform Day 25 education extraction (section-aware + degree dictionary)
+            extracted_education = extract_education(processed_text)
+
+            # Perform Day 26 experience extraction (section-aware + title taxonomy)
+            extracted_experience = extract_experience(processed_text)
+
+            # Perform Day 27 project extraction (section-aware + technology normalization)
+            extracted_projects = extract_projects(processed_text)
+
+            # Perform Day 28 structured resume orchestration & validation
+            structured_resume = build_structured_resume(
+                processed_text=processed_text,
+                skills=extracted_skills,
+                education=extracted_education,
+                experience=extracted_experience,
+                projects=extracted_projects,
+                resume_id=resume.id,
+                candidate_profile_id=profile.id,
+            )
+
+            # Store validated structured payload
+            resume.structured_data = structured_resume.model_dump()
+
             # Transition to PROCESSED on success
             resume.status = ResumeStatus.PROCESSED
             resume.processing_completed_at = datetime.now(timezone.utc)
@@ -543,10 +570,13 @@ class ResumeService:
             await self.resume_repo.db.refresh(resume)
 
             logger.info(
-                "Resume processing completed successfully: profile=%s, resume=%s, version=%d, chars=%d, pages=%d, sections=%d, tokens=%d, skills=%d (%d categories)",
+                "Resume processing completed successfully: profile=%s, resume=%s, version=%d, chars=%d, pages=%d, sections=%d, tokens=%d, skills=%d (%d categories), education_records=%d, experience_records=%d, project_records=%d",
                 profile.id, resume.id, resume.version, extracted_doc.character_count, extracted_doc.page_count,
                 len(processed_text.sections), len(processed_text.tokens),
                 extracted_skills.total_count, len(extracted_skills.categories),
+                extracted_education.total_count,
+                extracted_experience.total_count,
+                extracted_projects.total_count,
             )
             return resume
 

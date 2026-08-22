@@ -5,7 +5,7 @@ Day 21 (Text Extraction) -> Day 22 (OCR) -> Day 23 (Text Processing / Section De
 -> Day 24-27 (Entity Extraction) -> Day 28 (Structured JSON Persistence).
 """
 
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 from pydantic import BaseModel, Field
 
 
@@ -168,4 +168,281 @@ class ExtractedSkills(BaseModel):
     total_count: int = 0  # Total unique skills extracted
     categories: Dict[str, List[str]] = Field(default_factory=dict)  # Grouped canonical skill names by category
     metadata: Dict[str, Any] = Field(default_factory=dict)  # Processing stats (duration, spacy model, match count)
+
+
+# Day 25 Education Extraction Models
+
+class EducationRecord(BaseModel):
+    """Represents an individual education entry extracted from a resume (Day 25)."""
+
+    degree: Optional[str] = None  # Canonical degree name e.g. 'Bachelor of Technology'
+    normalized_degree: Optional[str] = None  # Lowercase identifier e.g. 'bachelor_of_technology'
+    degree_level: Optional[str] = None  # 'UNDERGRADUATE', 'POSTGRADUATE', 'DOCTORATE', 'DIPLOMA', 'SECONDARY', 'OTHER'
+
+    field_of_study: Optional[str] = None  # Major/Specialization e.g. 'Electrical Engineering'
+
+    institution: Optional[str] = None  # Cleaned / Canonical institution name e.g. 'National Institute of Technology, Rourkela'
+    normalized_institution: Optional[str] = None  # Lowercase normalized institution identifier
+
+    start_year: Optional[int] = None  # e.g. 2022
+    end_year: Optional[int] = None  # e.g. 2026
+    graduation_year: Optional[int] = None  # e.g. 2026
+    graduation_status: Optional[str] = None  # 'COMPLETED', 'EXPECTED', 'UNKNOWN'
+
+    cgpa: Optional[float] = None  # e.g. 7.99
+    percentage: Optional[float] = None  # e.g. 94.0
+    score_type: Optional[str] = None  # 'CGPA', 'GPA', 'CPI', 'PERCENTAGE', None
+
+    source_text: str = ""  # Raw text line / block evidence
+    section: str = "EDUCATION"  # Section where found
+    source: str = "pattern"  # Source ('dictionary', 'pattern', 'section', 'spacy', 'hybrid')
+    confidence: float = 0.90  # Heuristic confidence score (0.0 to 1.0)
+
+
+class ExtractedEducation(BaseModel):
+    """Container model for all extracted education records and metadata (Day 25)."""
+
+    education_records: List[EducationRecord] = Field(default_factory=list)
+    total_count: int = 0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 26 Experience Extraction Models
+
+class ExperienceRecord(BaseModel):
+    """Represents an individual work/employment experience entry extracted from a resume (Day 26)."""
+
+    company: Optional[str] = None  # Raw/Cleaned company name e.g. 'Google LLC'
+    normalized_company: Optional[str] = None  # Canonical lowercase company identifier e.g. 'google'
+
+    job_title: Optional[str] = None  # Raw/Cleaned job title e.g. 'Senior Software Engineer'
+    normalized_job_title: Optional[str] = None  # Canonical lowercase title identifier e.g. 'senior_software_engineer'
+
+    employment_type: Optional[str] = None  # 'FULL_TIME', 'PART_TIME', 'INTERNSHIP', 'CONTRACT', 'FREELANCE', 'TEMPORARY', 'APPRENTICESHIP', 'VOLUNTEER', 'RESEARCH', 'UNKNOWN'
+
+    start_date: Optional[str] = None  # e.g. '2022-01'
+    end_date: Optional[str] = None  # e.g. '2024-01'
+
+    start_year: Optional[int] = None  # e.g. 2022
+    start_month: Optional[int] = None  # 1-12
+
+    end_year: Optional[int] = None  # e.g. 2024
+    end_month: Optional[int] = None  # 1-12
+
+    duration_months: Optional[int] = None  # e.g. 24
+    duration_text: Optional[str] = None  # e.g. '2 years'
+
+    is_current: Optional[bool] = None  # True if currently employed in role
+
+    responsibilities: List[str] = Field(default_factory=list)  # Bullet points / responsibility text lines
+
+    seniority: Optional[str] = None  # 'INTERN', 'ENTRY_LEVEL', 'JUNIOR', 'MID_LEVEL', 'SENIOR', 'LEAD', 'STAFF', 'PRINCIPAL', 'MANAGER', 'DIRECTOR', 'EXECUTIVE', 'UNKNOWN'
+
+    location: Optional[str] = None  # e.g. 'Bengaluru, India' or 'Remote'
+
+    source_text: str = ""  # Raw text block evidence
+    section: str = "EXPERIENCE"  # Section where found
+    source: str = "pattern"  # Source ('dictionary', 'pattern', 'section', 'spacy', 'hybrid')
+    confidence: float = 0.90  # Heuristic confidence score (0.0 to 1.0)
+
+
+class ExtractedExperience(BaseModel):
+    """Container model for all extracted experience records and metadata (Day 26)."""
+
+    experiences: List[ExperienceRecord] = Field(default_factory=list)
+    total_count: int = 0
+    total_experience_months: Optional[int] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 27 Project Extraction Models
+
+class ProjectRecord(BaseModel):
+    """Represents an individual project entry extracted from a resume (Day 27)."""
+
+    name: Optional[str] = None  # Raw/Cleaned project name e.g. 'Talent AI'
+    normalized_name: Optional[str] = None  # Lowercase normalized identifier e.g. 'talent ai'
+
+    technologies: List[str] = Field(default_factory=list)  # Canonical tech names e.g. ['FastAPI', 'React.js']
+    normalized_technologies: List[str] = Field(default_factory=list)  # Lowercase tech IDs e.g. ['fastapi', 'react.js']
+
+    description: str = ""  # Original verbatim project description text
+
+    project_type: Optional[str] = None  # 'PERSONAL', 'ACADEMIC', 'COMMERCIAL', 'OPEN_SOURCE', 'UNKNOWN'
+    classification: Optional[str] = None  # 'FULL_STACK', 'WEB_APPLICATION', 'MACHINE_LEARNING', 'ARTIFICIAL_INTELLIGENCE', 'MOBILE_APPLICATION', 'DATA_SCIENCE', 'DEVOPS', 'EMBEDDED', 'RESEARCH', 'OTHER'
+
+    start_year: Optional[int] = None  # e.g. 2024
+    end_year: Optional[int] = None  # e.g. 2025
+
+    project_url: Optional[str] = None  # Optional project link
+    github_url: Optional[str] = None  # Optional GitHub repository link
+
+    source_text: str = ""  # Raw text block evidence
+    section: str = "PROJECTS"  # Section where found
+    source: str = "pattern"  # Source ('dictionary', 'pattern', 'section', 'spacy', 'hybrid')
+    confidence: float = 0.90  # Heuristic confidence score (0.0 to 1.0)
+
+
+class ExtractedProjects(BaseModel):
+    """Container model for all extracted project records and metadata (Day 27)."""
+
+    projects: List[ProjectRecord] = Field(default_factory=list)
+    total_count: int = 0
+    classifications: Dict[str, List[str]] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 29 Classification Models
+
+class ResumeClassification(BaseModel):
+    """Candidate domain, role, and experience level classification result (Day 29)."""
+
+    domain: str = "UNKNOWN"
+    domain_confidence: float = 0.0
+
+    role: str = "UNKNOWN"
+    role_confidence: float = 0.0
+
+    experience_level: str = "UNKNOWN"
+    experience_level_confidence: float = 0.0
+
+    domain_scores: Dict[str, float] = Field(default_factory=dict)
+    role_scores: Dict[str, float] = Field(default_factory=dict)
+    evidence: Dict[str, List[str]] = Field(default_factory=dict)
+
+    classifier_version: str = "day29-v1"
+    classification_method: str = "hybrid_rule_based"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 28 Structured Resume Model
+
+class StructuredResume(BaseModel):
+    """Canonical structured representation of a parsed resume (Day 28).
+
+    Combines Day 21-27 outputs into a validated, serializable, versioned document payload,
+    and Day 29 classification outputs.
+    """
+
+    schema_version: str = "1.0"
+    pipeline_version: str = "phase4-day28"
+
+    resume_id: Optional[Union[str, Any]] = None
+    candidate_profile_id: Optional[Union[str, Any]] = None
+
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+    portfolio: Optional[str] = None
+
+    summary: Optional[str] = None
+
+    skills: ExtractedSkills = Field(default_factory=ExtractedSkills)
+    education: ExtractedEducation = Field(default_factory=ExtractedEducation)
+    experience: ExtractedExperience = Field(default_factory=ExtractedExperience)
+    projects: ExtractedProjects = Field(default_factory=ExtractedProjects)
+
+    classification: Optional[ResumeClassification] = None
+
+    certifications: List[Any] = Field(default_factory=list)
+    languages: List[Any] = Field(default_factory=list)
+    achievements: List[Any] = Field(default_factory=list)
+
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 30 ATS Scoring Models
+
+class JobRequirements(BaseModel):
+    """Structured job requirements model for candidate ATS comparison (Day 30)."""
+
+    job_id: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+    required_keywords: List[str] = Field(default_factory=list)
+    preferred_keywords: List[str] = Field(default_factory=list)
+
+    required_skills: List[str] = Field(default_factory=list)
+    preferred_skills: List[str] = Field(default_factory=list)
+
+    required_education: List[str] = Field(default_factory=list)
+    preferred_education: List[str] = Field(default_factory=list)
+
+    required_experience_months: Optional[int] = None
+    preferred_experience_months: Optional[int] = None
+
+    required_roles: List[str] = Field(default_factory=list)
+    preferred_roles: List[str] = Field(default_factory=list)
+
+    required_domains: List[str] = Field(default_factory=list)
+    preferred_domains: List[str] = Field(default_factory=list)
+
+    required_experience_level: Optional[str] = None
+
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ATSScore(BaseModel):
+    """Job-specific ATS score and explainable component breakdown (Day 30)."""
+
+    score: float = 0.0
+
+    keyword_score: float = 0.0
+    skill_score: float = 0.0
+    education_score: float = 0.0
+    experience_score: float = 0.0
+
+    matched_keywords: List[str] = Field(default_factory=list)
+    missing_required_keywords: List[str] = Field(default_factory=list)
+    missing_preferred_keywords: List[str] = Field(default_factory=list)
+
+    matched_required_skills: List[str] = Field(default_factory=list)
+    missing_required_skills: List[str] = Field(default_factory=list)
+    matched_preferred_skills: List[str] = Field(default_factory=list)
+    missing_preferred_skills: List[str] = Field(default_factory=list)
+
+    matched_education: List[str] = Field(default_factory=list)
+    missing_education: List[str] = Field(default_factory=list)
+
+    experience_match: Dict[str, Any] = Field(default_factory=dict)
+    score_breakdown: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+    explanation: str = ""
+    recommendations: List[str] = Field(default_factory=list)
+
+    scorer_version: str = "day30-v1"
+    scoring_method: str = "weighted_hybrid_rule_based"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 31 Similarity Matching Models
+
+class SimilarityMatch(BaseModel):
+    """Semantic embedding-based similarity match output (Day 31)."""
+
+    resume_id: Optional[str] = None
+    job_id: Optional[str] = None
+
+    raw_cosine_similarity: float = 0.0
+    similarity_score: float = 0.0
+
+    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_dimension: int = 384
+
+    resume_text_length: int = 0
+    job_text_length: int = 0
+
+    similarity_tier: str = "Low"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+
+
+
+
+
 

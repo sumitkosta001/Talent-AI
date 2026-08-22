@@ -47,6 +47,10 @@ class ApplicationSettings(BaseAppSettings):
     contact_name: str = Field("TalentAI Team", validation_alias="CONTACT_NAME")
     contact_email: str = Field("support@talentai.com", validation_alias="CONTACT_EMAIL")
     license_name: str = Field("MIT", validation_alias="LICENSE_NAME")
+    embedding_model_name: str = Field(
+        "sentence-transformers/all-MiniLM-L6-v2",
+        validation_alias="EMBEDDING_MODEL_NAME",
+    )
 
     @property
     def name(self) -> str:

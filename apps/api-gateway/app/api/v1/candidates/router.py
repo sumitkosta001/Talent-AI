@@ -44,6 +44,8 @@ from app.schemas.candidate.resume import (
     ResumeRestoreResponse,
     ResumeProcessingResponse,
 )
+from app.services.resume_processing import JobRequirements, ATSScore, SimilarityMatch
+
 
 router = APIRouter(
     prefix="/candidates",
@@ -620,3 +622,71 @@ async def delete_resume(
 ):
     """Soft-delete candidate resume securely with auto-promotion."""
     return await service.delete_resume(current_user.id, resume_id)
+
+
+@router.post(
+    "/me/resumes/{resume_id}/ats-score",
+    response_model=ATSScore,
+    status_code=status.HTTP_200_OK,
+    summary="Calculate job-specific ATS score",
+    description="Evaluate processed candidate resume against specified JobRequirements and return explainable ATS score breakdown (Day 30).",
+)
+async def score_candidate_resume(
+    resume_id: UUID,
+    job_requirements: JobRequirements,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> ATSScore:
+    """Calculate job-specific ATS score for candidate resume."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, score_resume_against_job
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    try:
+        ats_result = score_resume_against_job(structured, job_requirements)
+        return ats_result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+
+
+@router.post(
+    "/me/resumes/{resume_id}/similarity-score",
+    response_model=SimilarityMatch,
+    status_code=status.HTTP_200_OK,
+    summary="Calculate semantic embedding similarity score",
+    description="Calculate semantic vector embedding similarity match between processed candidate resume and specified JobRequirements using sentence-transformers (Day 31).",
+)
+async def calculate_resume_similarity(
+    resume_id: UUID,
+    job_requirements: JobRequirements,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> SimilarityMatch:
+    """Calculate semantic embedding similarity score for candidate resume against job requirements."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, SimilarityMatch, calculate_resume_job_similarity
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    try:
+        match_result = calculate_resume_job_similarity(structured, job_requirements)
+        return match_result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Failed to calculate similarity score: {str(err)}")
+
+
