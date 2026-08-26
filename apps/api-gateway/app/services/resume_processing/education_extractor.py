@@ -77,10 +77,18 @@ def _extract_field_of_study(line: str, raw_degree_match: str) -> Optional[str]:
     return None
 
 
+def _is_section_header(line: str) -> bool:
+    """Check if line is purely an education section heading."""
+    return line.lower().rstrip(":") in {
+        "education", "education details", "academic details",
+        "qualifications", "academic qualifications", "academics"
+    }
+
+
 def _find_institution_in_block(lines: List[str]) -> Tuple[Optional[str], Optional[str]]:
     """Scan block lines for institutional names using structural indicators or spaCy ORG entities."""
     for line in lines:
-        if _is_experience_or_project_line(line):
+        if _is_experience_or_project_line(line) or _is_section_header(line):
             continue
 
         # Check for institution keywords
@@ -94,7 +102,7 @@ def _find_institution_in_block(lines: List[str]) -> Tuple[Optional[str], Optiona
     # Optional spaCy NER fallback within education block
     nlp = get_spacy_nlp()
     if nlp is not None:
-        block_text = " ".join(lines)
+        block_text = " ".join([l for l in lines if not _is_section_header(l)])
         doc = nlp(block_text)
         for ent in doc.ents:
             if ent.label_ == "ORG":
@@ -104,6 +112,27 @@ def _find_institution_in_block(lines: List[str]) -> Tuple[Optional[str], Optiona
                     return normalize_institution(text_cand)
 
     return None, None
+
+
+def _is_institution_line(line: str) -> bool:
+    """Check if line matches an institutional name indicator."""
+    if not line or _is_experience_or_project_line(line) or _is_section_header(line):
+        return False
+    for kw in INSTITUTION_KEYWORDS:
+        if re.search(r'\b' + re.escape(kw) + r'\b', line, re.IGNORECASE):
+            return True
+    return False
+
+
+def _has_degree_match(line: str) -> bool:
+    """Check if line matches any known degree or school pattern."""
+    if not line or _is_experience_or_project_line(line) or _is_section_header(line):
+        return False
+    for canonical_name, info in DEGREE_DICTIONARY.items():
+        pattern: re.Pattern = info["pattern"]
+        if pattern.search(line):
+            return True
+    return False
 
 
 def extract_education(processed_text: Optional[ProcessedResumeText]) -> ExtractedEducation:
@@ -130,41 +159,47 @@ def extract_education(processed_text: Optional[ProcessedResumeText]) -> Extracte
     # 1. Identify Education Sections vs Fallback Full Text Lines
     edu_sections = [s for s in processed_text.sections if s.name == "EDUCATION"]
 
-    lines_to_process: List[Tuple[str, str, float]] = []  # (line_text, section_name, base_confidence)
-
+    blocks: List[List[Tuple[str, str, float]]] = []
+    
     if edu_sections:
         for sec in edu_sections:
-            sec_lines = [l.strip() for l in sec.content.splitlines() if l.strip()]
-            for l in sec_lines:
-                lines_to_process.append((l, sec.name, 0.95))
+            paras = [p.strip() for p in sec.content.split("\n\n") if p.strip()]
+            for para in paras:
+                para_lines = [l.strip() for l in para.splitlines() if l.strip() and not _is_section_header(l)]
+                current_block: List[Tuple[str, str, float]] = []
+                for l in para_lines:
+                    starts_new_entry = False
+                    if _is_institution_line(l) and any(_is_institution_line(item[0]) for item in current_block):
+                        starts_new_entry = True
+                    elif _has_degree_match(l) and any(_has_degree_match(item[0]) for item in current_block):
+                        starts_new_entry = True
+
+                    if starts_new_entry:
+                        blocks.append(current_block)
+                        current_block = []
+                    current_block.append((l, sec.name, 0.95))
+                if current_block:
+                    blocks.append(current_block)
     else:
-        # Fallback: scan all lines with lower base confidence
-        all_lines = [l.strip() for l in processed_text.normalized_text.splitlines() if l.strip()]
-        for l in all_lines:
-            lines_to_process.append((l, "EDUCATION_FALLBACK", 0.80))
-
-    # 2. Group lines into cohesive Education Candidate Blocks
-    # Split blocks on blank lines or new degree matches
-    blocks: List[List[Tuple[str, str, float]]] = []
-    current_block: List[Tuple[str, str, float]] = []
-
-    for line_text, sec_name, base_conf in lines_to_process:
-        # Check if line starts a new degree
-        has_new_degree = False
-        for canonical_name, info in DEGREE_DICTIONARY.items():
-            pattern: re.Pattern = info["pattern"]
-            if pattern.search(line_text):
-                has_new_degree = True
-                break
-
-        if has_new_degree and current_block:
-            blocks.append(current_block)
+        # Fallback: scan full document lines
+        paras = [p.strip() for p in processed_text.normalized_text.split("\n\n") if p.strip()]
+        for para in paras:
+            para_lines = [l.strip() for l in para.splitlines() if l.strip() and not _is_section_header(l)]
             current_block = []
+            for l in para_lines:
+                starts_new_entry = False
+                if _is_institution_line(l) and any(_is_institution_line(item[0]) for item in current_block):
+                    starts_new_entry = True
+                elif _has_degree_match(l) and any(_has_degree_match(item[0]) for item in current_block):
+                    starts_new_entry = True
 
-        current_block.append((line_text, sec_name, base_conf))
+                if starts_new_entry:
+                    blocks.append(current_block)
+                    current_block = []
+                current_block.append((l, "EDUCATION_FALLBACK", 0.80))
+            if current_block:
+                blocks.append(current_block)
 
-    if current_block:
-        blocks.append(current_block)
 
     # 3. Process each Candidate Block
     for block in blocks:
@@ -197,13 +232,13 @@ def extract_education(processed_text: Optional[ProcessedResumeText]) -> Extracte
         # Check school education patterns if no university degree matched
         if not matched_degree_canonical:
             for l in block_lines:
-                if re.search(r'\b(?:Class\s+(?:XII|12)|12th|Higher\s+Secondary|Senior\s+Secondary)\b', l, re.IGNORECASE):
+                if re.search(r'\b(?:Class\s+(?:XII|12)|12th|Higher\s+Secondary|Senior\s+Secondary|Intermediate|Science\s*\(PCM\))\b', l, re.IGNORECASE):
                     matched_degree_canonical = "Senior Secondary"
                     matched_degree_normalized = "senior_secondary"
                     matched_degree_level = "SECONDARY"
                     matched_raw_str = "Class XII"
                     break
-                elif re.search(r'\b(?:Class\s+(?:X|10)|10th|Secondary\s+School)\b', l, re.IGNORECASE):
+                elif re.search(r'\b(?:Class\s+(?:X|10)|10th|Secondary\s+School|UP\s+Board)\b', l, re.IGNORECASE):
                     matched_degree_canonical = "Secondary"
                     matched_degree_normalized = "secondary"
                     matched_degree_level = "SECONDARY"
@@ -221,6 +256,14 @@ def extract_education(processed_text: Optional[ProcessedResumeText]) -> Extracte
             if fos:
                 field_of_study = fos
                 break
+        
+        # If no field of study extracted from degree connector, check for Science (PCM/PCB) or Engineering
+        if not field_of_study:
+            for l in block_lines:
+                pcm_match = re.search(r'\b(Science(?:\s*\([A-Za-z\s]+\))?|PCM|PCB|Commerce|Arts|Computer\s+Science)\b', l, re.IGNORECASE)
+                if pcm_match:
+                    field_of_study = pcm_match.group(1).strip()
+                    break
 
         # Extract Institution
         institution, normalized_inst = _find_institution_in_block(block_lines)
@@ -233,7 +276,7 @@ def extract_education(processed_text: Optional[ProcessedResumeText]) -> Extracte
 
         # Compute heuristic confidence score
         confidence = base_confidence
-        if matched_degree_canonical and institution and grad_yr and (cgpa_val or pct_val):
+        if matched_degree_canonical and institution and (grad_yr or start_yr) and (cgpa_val or pct_val):
             confidence = min(0.98, base_confidence + 0.03)
         elif matched_degree_canonical and institution:
             confidence = base_confidence
@@ -263,6 +306,7 @@ def extract_education(processed_text: Optional[ProcessedResumeText]) -> Extracte
 
     # 4. Deduplicate Records
     deduped_records = deduplicate_education_records(records)
+
     elapsed_sec = round(time.perf_counter() - start_time, 4)
 
     logger.info(

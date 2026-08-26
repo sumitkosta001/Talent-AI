@@ -207,9 +207,16 @@ def build_job_embedding_text(job: JobRequirements) -> str:
     return combined if combined else "Empty job requirements"
 
 
-def generate_embedding(text: str, model_name: Optional[str] = None) -> np.ndarray:
-    """Generates normalized 1D float32 vector embedding for given input text."""
-    if not text or not text.strip():
+def generate_embedding(
+    text: Union[str, StructuredResume, JobRequirements], model_name: Optional[str] = None
+) -> np.ndarray:
+    """Generates normalized 1D float32 vector embedding for given input text or model."""
+    if isinstance(text, StructuredResume):
+        text = build_resume_embedding_text(text)
+    elif isinstance(text, JobRequirements):
+        text = build_job_embedding_text(text)
+
+    if not text or not str(text).strip():
         text = "empty"
 
     model = get_embedding_model(model_name)
@@ -228,6 +235,28 @@ def generate_embedding(text: str, model_name: Optional[str] = None) -> np.ndarra
     return embedding.astype(np.float32)
 
 
+def generate_resume_embedding(
+    resume: Union[StructuredResume, str], model_name: Optional[str] = None
+) -> np.ndarray:
+    """Generates normalized 1D float32 vector embedding for a StructuredResume or resume text string."""
+    if isinstance(resume, StructuredResume):
+        text = build_resume_embedding_text(resume)
+    else:
+        text = str(resume)
+    return generate_embedding(text, model_name=model_name)
+
+
+def generate_job_embedding(
+    job: Union[JobRequirements, str], model_name: Optional[str] = None
+) -> np.ndarray:
+    """Generates normalized 1D float32 vector embedding for JobRequirements or job text string."""
+    if isinstance(job, JobRequirements):
+        text = build_job_embedding_text(job)
+    else:
+        text = str(job)
+    return generate_embedding(text, model_name=model_name)
+
+
 def calculate_cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculates cosine similarity between two 1D vector embeddings.
 
@@ -243,13 +272,19 @@ def calculate_cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
             f"Vector dimension mismatch for similarity calculation: {vec1.shape} vs {vec2.shape}"
         )
 
+    if np.isnan(vec1).any() or np.isnan(vec2).any() or np.isinf(vec1).any() or np.isinf(vec2).any():
+        return 0.0
+
     norm1 = float(np.linalg.norm(vec1))
     norm2 = float(np.linalg.norm(vec2))
 
-    if norm1 == 0.0 or norm2 == 0.0:
+    if norm1 == 0.0 or norm2 == 0.0 or np.isnan(norm1) or np.isnan(norm2) or np.isinf(norm1) or np.isinf(norm2):
         return 0.0
 
     dot_product = float(np.dot(vec1, vec2))
+    if np.isnan(dot_product) or np.isinf(dot_product):
+        return 0.0
+
     cosine_sim = dot_product / (norm1 * norm2)
 
     # Clamp cosine similarity to [-1.0, 1.0] to handle floating point precision

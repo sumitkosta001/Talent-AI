@@ -59,3 +59,8 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# FAISS Vector Index Data
+data/faiss/
+*.index
+

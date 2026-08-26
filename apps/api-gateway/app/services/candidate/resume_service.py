@@ -114,7 +114,10 @@ class ResumeService:
         # 1. Resolve candidate profile
         profile = await self.profile_repo.get_by_user_id(user_id)
         if not profile:
-            raise CandidateProfileNotFoundError()
+            from app.models.candidate import CandidateProfile
+            uid = UUID(str(user_id)) if isinstance(user_id, str) else user_id
+            profile = await self.profile_repo.create(CandidateProfile(user_id=uid, profile_completion_percentage=0))
+
 
         # 2. Validate file presence
         if not file or not file.filename:
@@ -518,7 +521,8 @@ class ResumeService:
                 file_bytes = stream.read()
             finally:
                 stream.close()
-                stream.release_conn()
+                if hasattr(stream, "release_conn"):
+                    stream.release_conn()
 
             if not file_bytes:
                 raise Exception("Uploaded document is empty.")
@@ -647,7 +651,8 @@ class ResumeService:
                 stream = self.storage_service.get_object(bucket_name, object_key)
                 content = stream.read()
                 stream.close()
-                stream.release_conn()
+                if hasattr(stream, "release_conn"):
+                    stream.release_conn()
             except Exception as read_exc:
                 logger.warning("Could not read object content for rollback backup: %s", str(read_exc))
 

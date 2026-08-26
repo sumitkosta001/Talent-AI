@@ -1,6 +1,7 @@
 """Candidate Profile REST API Routers."""
 
-from typing import Annotated, List
+from typing import Annotated, List, Optional
+
 from uuid import UUID
 import urllib.parse
 from fastapi import APIRouter, Depends, status, File, UploadFile, Query
@@ -44,7 +45,21 @@ from app.schemas.candidate.resume import (
     ResumeRestoreResponse,
     ResumeProcessingResponse,
 )
+from pydantic import BaseModel, Field
+
+from app.services.resume_processing.models import (
+    FAISSIndexResult,
+    FAISSSearchResult,
+    JobRecommendationResponse,
+    StructuredResume,
+    GeneratedInterviewQuestions,
+    ResumeClassification,
+)
+
+
 from app.services.resume_processing import JobRequirements, ATSScore, SimilarityMatch
+
+
 
 
 router = APIRouter(
@@ -494,7 +509,9 @@ async def preview_resume(
                 yield chunk
         finally:
             stream.close()
-            stream.release_conn()
+            if hasattr(stream, "release_conn"):
+                stream.release_conn()
+
 
     return StreamingResponse(
         file_generator(),
@@ -537,7 +554,9 @@ async def download_resume(
                 yield chunk
         finally:
             stream.close()
-            stream.release_conn()
+            if hasattr(stream, "release_conn"):
+                stream.release_conn()
+
 
     return StreamingResponse(
         file_generator(),
@@ -624,8 +643,43 @@ async def delete_resume(
     return await service.delete_resume(current_user.id, resume_id)
 
 
+@router.get(
+    "/me/resumes/{resume_id}/classification",
+    response_model=ResumeClassification,
+    status_code=status.HTTP_200_OK,
+    summary="Get candidate resume domain and role classification",
+    description="Retrieve explainable domain classification, predicted role, experience level, confidence, and scores for processed candidate resume (Day 29).",
+)
+async def get_candidate_resume_classification(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> ResumeClassification:
+    """Retrieve Day 29 classification for candidate resume."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, classify_resume
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    if structured.classification:
+        return structured.classification
+
+    try:
+        classification = classify_resume(structured)
+        return classification
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Failed to classify resume: {str(err)}")
+
+
 @router.post(
     "/me/resumes/{resume_id}/ats-score",
+
     response_model=ATSScore,
     status_code=status.HTTP_200_OK,
     summary="Calculate job-specific ATS score",
@@ -688,5 +742,260 @@ async def calculate_resume_similarity(
         raise HTTPException(status_code=400, detail=str(val_err))
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Failed to calculate similarity score: {str(err)}")
+
+
+# Day 32 FAISS Vector Indexing & Search Endpoints
+
+@router.post(
+    "/me/resumes/{resume_id}/faiss-index",
+    response_model=FAISSIndexResult,
+    status_code=status.HTTP_200_OK,
+    summary="Index candidate resume vector in FAISS",
+    description="Generate Day 31 vector embedding for processed candidate resume and index it into the Resume FAISS vector index (Day 32).",
+)
+async def index_candidate_resume_vector(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> FAISSIndexResult:
+    """Index candidate resume vector into FAISS."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, FAISSIndexResult, index_resume
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    try:
+        res = index_resume(resume_id, structured)
+        return res
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"FAISS indexing failed: {str(err)}")
+
+
+@router.delete(
+    "/me/resumes/{resume_id}/faiss-index",
+    status_code=status.HTTP_200_OK,
+    summary="Remove candidate resume vector from FAISS",
+    description="Remove candidate resume vector embedding from the Resume FAISS vector index (Day 32).",
+)
+async def remove_candidate_resume_vector(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> dict:
+    """Remove candidate resume vector from FAISS."""
+    from app.services.resume_processing import remove_resume_index
+
+    # Confirm candidate owns the resume
+    await service.get_resume_metadata(current_user.id, resume_id)
+    removed = remove_resume_index(resume_id)
+    return {"resume_id": str(resume_id), "removed": removed}
+
+
+@router.post(
+    "/me/resumes/{resume_id}/search-jobs",
+    response_model=FAISSSearchResult,
+    status_code=status.HTTP_200_OK,
+    summary="Search FAISS Job vector index using candidate resume",
+    description="Query Job FAISS vector index using candidate resume embedding to find top-k matching jobs (Day 32).",
+)
+async def search_jobs_for_resume_endpoint(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+    top_k: int = 10,
+) -> FAISSSearchResult:
+    """Search Job FAISS vector index using candidate resume."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, FAISSSearchResult, search_jobs_for_resume
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    try:
+        result = search_jobs_for_resume(structured, top_k=top_k)
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"FAISS search failed: {str(err)}")
+
+
+# ==============================================================================
+# DAY 33 RECOMMENDATIONS ENDPOINTS
+# ==============================================================================
+
+class CandidateJobRecommendationRequest(BaseModel):
+    """Optional request payload for candidate job recommendations."""
+
+    jobs: Optional[List[JobRequirements]] = None
+
+
+@router.post(
+    "/me/resumes/{resume_id}/recommendations/jobs",
+    response_model=JobRecommendationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get job recommendations for authenticated candidate resume",
+    description="Retrieve ranked, evidence-explained job recommendations combining FAISS vector search and Day 30 ATS scoring (Day 33).",
+)
+async def get_job_recommendations_for_my_resume(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+    top_k: int = Query(default=10, ge=1, le=50),
+    body: Optional[CandidateJobRecommendationRequest] = None,
+) -> JobRecommendationResponse:
+    """Get job recommendations for candidate's processed resume."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import StructuredResume, JobRecommendationResponse, recommend_jobs_for_resume
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    candidate_jobs = body.jobs if body else None
+    try:
+        result = recommend_jobs_for_resume(structured, candidate_jobs=candidate_jobs, top_k=top_k)
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Job recommendation failed: {str(err)}")
+
+
+class GeneralJobRecommendationRequest(BaseModel):
+    """Payload for general job recommendation endpoint."""
+
+    structured_resume: StructuredResume
+    jobs: Optional[List[JobRequirements]] = None
+
+
+@router.post(
+    "/recommend-jobs",
+    response_model=JobRecommendationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Recommend jobs for structured resume payload",
+    description="Query job recommendations for a StructuredResume payload combining FAISS vector search and Day 30 ATS scoring (Day 33).",
+)
+async def recommend_jobs_endpoint(
+    payload: GeneralJobRecommendationRequest,
+    top_k: int = Query(default=10, ge=1, le=50),
+) -> JobRecommendationResponse:
+    """Recommend jobs for a given structured resume payload."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import JobRecommendationResponse, recommend_jobs_for_resume
+
+    try:
+        result = recommend_jobs_for_resume(payload.structured_resume, candidate_jobs=payload.jobs, top_k=top_k)
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Job recommendation failed: {str(err)}")
+
+
+# ==============================================================================
+# DAY 34 AI INTERVIEW QUESTIONS ENDPOINTS
+# ==============================================================================
+
+class GeneralInterviewQuestionRequest(BaseModel):
+    """Payload for general interview question generation endpoint."""
+
+    structured_resume: StructuredResume
+    count: int = Field(default=10, ge=1, le=50)
+    difficulty: str = "MEDIUM"
+    categories: Optional[List[str]] = None
+    provider: str = "auto"
+
+
+@router.post(
+    "/me/resumes/{resume_id}/interview-questions",
+    response_model=GeneratedInterviewQuestions,
+    status_code=status.HTTP_200_OK,
+    summary="Generate interview questions for authenticated candidate resume",
+    description="Generate candidate-tailored role, skill, project, and experience interview questions (Day 34).",
+)
+async def generate_interview_questions_for_my_resume(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+    count: int = Query(default=10, ge=1, le=50),
+    difficulty: str = Query(default="MEDIUM"),
+    categories: Optional[List[str]] = Query(default=None),
+    provider: str = Query(default="auto"),
+) -> GeneratedInterviewQuestions:
+    """Generate interview questions for candidate's processed resume."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import (
+        StructuredResume,
+        GeneratedInterviewQuestions,
+        generate_interview_questions,
+    )
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    structured = StructuredResume.model_validate(resume.structured_data)
+    try:
+        result = generate_interview_questions(
+            structured, count=count, difficulty=difficulty, categories=categories, provider=provider
+        )
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Interview question generation failed: {str(err)}")
+
+
+@router.post(
+    "/generate-interview-questions",
+    response_model=GeneratedInterviewQuestions,
+    status_code=status.HTTP_200_OK,
+    summary="Generate interview questions for structured resume payload",
+    description="Generate interview questions for a provided StructuredResume payload (Day 34).",
+)
+async def generate_interview_questions_endpoint(
+    payload: GeneralInterviewQuestionRequest,
+) -> GeneratedInterviewQuestions:
+    """Generate interview questions for a given structured resume payload."""
+    from fastapi import HTTPException
+    from app.services.resume_processing import GeneratedInterviewQuestions, generate_interview_questions
+
+    try:
+        result = generate_interview_questions(
+            payload.structured_resume,
+            count=payload.count,
+            difficulty=payload.difficulty,
+            categories=payload.categories,
+            provider=payload.provider,
+        )
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Interview question generation failed: {str(err)}")
+
+
+
 
 

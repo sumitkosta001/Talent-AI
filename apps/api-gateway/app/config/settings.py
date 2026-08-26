@@ -291,6 +291,36 @@ class NLPSettings(BaseAppSettings):
     skill_min_confidence: float = Field(0.5, validation_alias="SKILL_MIN_CONFIDENCE")
 
 
+class FAISSSettings(BaseAppSettings):
+    """FAISS vector indexing and similarity search configuration settings (Day 32)."""
+
+    index_dir: str = Field("data/faiss", validation_alias="FAISS_INDEX_DIR")
+    resume_index_name: str = Field("resumes.index", validation_alias="FAISS_RESUME_INDEX_NAME")
+    job_index_name: str = Field("jobs.index", validation_alias="FAISS_JOB_INDEX_NAME")
+    embedding_dimension: int = Field(384, validation_alias="FAISS_EMBEDDING_DIMENSION")
+    index_type: str = Field("FLAT_IP", validation_alias="FAISS_INDEX_TYPE")
+    top_k: int = Field(10, validation_alias="FAISS_TOP_K")
+
+
+class RecommendationSettings(BaseAppSettings):
+    """Recommendation engine configuration settings (Day 33)."""
+
+    semantic_weight: float = Field(0.50, validation_alias="RECOMMENDATION_SEMANTIC_WEIGHT")
+    ats_weight: float = Field(0.50, validation_alias="RECOMMENDATION_ATS_WEIGHT")
+    default_top_k: int = Field(10, validation_alias="RECOMMENDATION_DEFAULT_TOP_K")
+    max_top_k: int = Field(50, validation_alias="RECOMMENDATION_MAX_TOP_K")
+    pool_factor: int = Field(3, validation_alias="RECOMMENDATION_POOL_FACTOR")
+
+
+class InterviewQuestionSettings(BaseAppSettings):
+    """AI Interview Questions generator configuration settings (Day 34)."""
+
+    default_count: int = Field(10, validation_alias="INTERVIEW_QUESTION_DEFAULT_COUNT")
+    max_count: int = Field(50, validation_alias="INTERVIEW_QUESTION_MAX_COUNT")
+    default_difficulty: str = Field("MEDIUM", validation_alias="INTERVIEW_QUESTION_DEFAULT_DIFFICULTY")
+    default_provider: str = Field("auto", validation_alias="INTERVIEW_QUESTION_DEFAULT_PROVIDER")
+
+
 class Settings:
     """Master Application Configuration Container."""
 
@@ -309,8 +339,14 @@ class Settings:
     minio = MinioSettings()
     ocr = OCRSettings()
     nlp = NLPSettings()
+    faiss = FAISSSettings()
+    recommendation = RecommendationSettings()
+    interview_question = InterviewQuestionSettings()
 
 
 settings = Settings()
+
+
+
 
 

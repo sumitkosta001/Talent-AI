@@ -79,6 +79,83 @@ def _extract_techs_from_text(text: str) -> List[str]:
     return found_techs
 
 
+ACTION_VERBS: Set[str] = {
+    "architected", "developed", "built", "integrated", "designed", "implemented",
+    "created", "engineered", "maintained", "utilized", "led", "managed", "configured",
+    "deployed", "automated", "optimized", "enhanced", "spearheaded", "authored",
+    "trained", "achieved", "executed", "collaborated", "constructed", "generated",
+    "solved", "delivered", "programmed", "orchestrated", "established", "supervised",
+}
+
+
+TECH_KEYWORDS: Set[str] = {
+    "python", "typescript", "javascript", "react", "react.js", "next.js", "nextjs", "node.js",
+    "express.js", "fastapi", "django", "flask", "postgresql", "mongodb", "mysql", "redis",
+    "docker", "kubernetes", "aws", "azure", "gcp", "tailwind", "prisma", "gemini api", "openai api",
+    "pytorch", "tensorflow", "scikit-learn", "opencv", "spacy", "java", "c++", "c#", "html", "css"
+}
+
+
+def _is_pure_date_line(line: str) -> bool:
+    """Check if line is purely a date or year range."""
+    clean = line.strip()
+    if YEAR_RANGE_PATTERN.search(clean):
+        letters_only = re.sub(r'[\d\s\-–—/.,()toPresentCurrentOngoingNow]', '', clean, flags=re.IGNORECASE)
+        if len(letters_only) == 0:
+            return True
+    return False
+
+
+def _is_tech_stack_line(line: str) -> bool:
+    """Check if line is a comma-separated tech stack listing rather than a project title."""
+    clean = line.strip()
+    if clean.lower().startswith(("technologies:", "tech stack:", "tools:", "stack:", "tech:")):
+        return True
+    if ("," in clean or "/" in clean) and ("|" not in clean and "–" not in clean and "—" not in clean and "(" not in clean):
+        parts = [p.strip().lower() for p in re.split(r'[,/]', clean) if p.strip()]
+        if len(parts) >= 2:
+            matched = sum(1 for p in parts if any(k in p for k in TECH_KEYWORDS))
+            if matched >= 1:
+                return True
+    return False
+
+
+def _is_project_header_line(line: str) -> bool:
+    """Determine if a line is a genuine project title header vs bullet/tech/description."""
+    clean = line.strip()
+    if not clean:
+        return False
+    # Check bullet prefixes
+    if clean.startswith(("-", "*", "•", "▪", "◦", "‣")):
+        return False
+    # Check numbered bullet like 1. or (1)
+    if re.match(r'^(?:\d+[\.\)]|\(\d+\))\s+', clean):
+        return False
+    # Check section title
+    if clean.lower().rstrip(":") in {
+        "projects", "academic projects", "personal projects",
+        "key projects", "selected projects", "technical projects",
+        "technologies", "tech stack", "tools", "stack"
+    }:
+        return False
+    if _is_pure_date_line(clean):
+        return False
+    if _is_tech_stack_line(clean):
+        return False
+    # Check action verbs
+    first_word = clean.split()[0].lower().rstrip(":,.-")
+    if first_word in ACTION_VERBS:
+        return False
+    # Check ending in period (sentences are descriptions)
+    if clean.endswith("."):
+        return False
+    # Project title shouldn't be excessively long sentence
+    if len(clean) > 80:
+        return False
+    return True
+
+
+
 def _extract_name_and_techs_from_line(line: str) -> Tuple[Optional[str], List[str]]:
     """Extract project name and embedded technologies from heading line."""
     if not line:
@@ -87,16 +164,16 @@ def _extract_name_and_techs_from_line(line: str) -> Tuple[Optional[str], List[st
     line_clean = line.strip()
 
     # Parenthesis format e.g. "Resume Analyzer (Python, spaCy, FastAPI)"
-    paren_match = re.search(r'^([A-Za-z0-9\s&._-]{2,40})\s*\(([^)]+)\)', line_clean)
+    paren_match = re.search(r'^([A-Za-z0-9\s&._-]{2,50})\s*\(([^)]+)\)', line_clean)
     if paren_match:
         name_cand = paren_match.group(1).strip()
         tech_str = paren_match.group(2).strip()
         techs = _extract_techs_from_text(tech_str)
         return name_cand, techs
 
-    # Separator format e.g. "Talent AI | FastAPI | React | PostgreSQL"
-    if "|" in line_clean or "—" in line_clean or " – " in line_clean:
-        parts = [p.strip() for p in re.split(r'[|—–]', line_clean) if p.strip()]
+    # Separator format e.g. "Learnify – AI-Powered Learning Platform" or "Talent AI | FastAPI | React"
+    if "|" in line_clean or "—" in line_clean or " – " in line_clean or " - " in line_clean:
+        parts = [p.strip() for p in re.split(r'[|—–]|\s+-\s+', line_clean) if p.strip()]
         if len(parts) >= 2:
             name_cand = parts[0]
             techs: List[str] = []
@@ -105,6 +182,15 @@ def _extract_name_and_techs_from_line(line: str) -> Tuple[Optional[str], List[st
                 if p_techs:
                     techs.extend(p_techs)
             return name_cand, techs
+
+    # Colon format e.g. "Talent Platform: Candidate-job matching platform" (ensure it is not a URL)
+    if ":" in line_clean and not re.search(r'https?:', line_clean, re.IGNORECASE):
+        parts = [p.strip() for p in line_clean.split(":", 1) if p.strip()]
+        if len(parts) == 2:
+            name_cand = parts[0]
+            if len(name_cand) <= 50 and len(name_cand.split()) <= 5:
+                techs = _extract_techs_from_text(parts[1])
+                return name_cand, techs
 
     return line_clean, []
 
@@ -137,13 +223,18 @@ def extract_projects(processed_text: Optional[ProcessedResumeText]) -> Extracted
 
     if proj_sections:
         for sec in proj_sections:
-            # Split section content into paragraphs by blank lines
-            paragraphs = [p.strip() for p in sec.content.split("\n\n") if p.strip()]
-            for para in paragraphs:
-                para_lines = [l.strip() for l in para.splitlines() if l.strip()]
-                if para_lines:
-                    block_items = [(l, sec.name, 0.95) for l in para_lines]
-                    blocks.append(block_items)
+            lines = [l.strip() for l in sec.content.splitlines() if l.strip()]
+            curr_block: List[Tuple[str, str, float]] = []
+            for l in lines:
+                if l.lower().rstrip(":") in {"projects", "academic projects", "personal projects", "key projects", "technical projects"}:
+                    continue
+                if _is_project_header_line(l):
+                    if curr_block:
+                        blocks.append(curr_block)
+                        curr_block = []
+                curr_block.append((l, sec.name, 0.95))
+            if curr_block:
+                blocks.append(curr_block)
 
     # 2. Process Candidate Blocks
     for block in blocks:
@@ -165,30 +256,6 @@ def extract_projects(processed_text: Optional[ProcessedResumeText]) -> Extracted
             else:
                 continue
 
-        # Check if block is actually a description paragraph belonging to the previous project
-        if records and (header_line.endswith(".") or len(header_line) > 50 or header_line.lower().startswith(("ai-powered", "a ", "an ", "the ", "built ", "developed "))):
-            if not _extract_techs_from_text(block_text) and not YEAR_RANGE_PATTERN.search(block_text):
-                prev_rec = records[-1]
-                updated_desc = (prev_rec.description + " " + block_text).strip()
-                records[-1] = ProjectRecord(
-                    name=prev_rec.name,
-                    normalized_name=prev_rec.normalized_name,
-                    technologies=prev_rec.technologies,
-                    normalized_technologies=prev_rec.normalized_technologies,
-                    description=updated_desc,
-                    project_type=prev_rec.project_type,
-                    classification=prev_rec.classification,
-                    start_year=prev_rec.start_year,
-                    end_year=prev_rec.end_year,
-                    project_url=prev_rec.project_url,
-                    github_url=prev_rec.github_url,
-                    source_text=prev_rec.source_text + "\n" + block_text,
-                    section=prev_rec.section,
-                    source=prev_rec.source,
-                    confidence=prev_rec.confidence,
-                )
-                continue
-
         # Extract name and same-line technologies
         raw_name, same_line_techs = _extract_name_and_techs_from_line(header_line)
         if not raw_name or len(raw_name) > 60 or raw_name.endswith("."):
@@ -198,6 +265,7 @@ def extract_projects(processed_text: Optional[ProcessedResumeText]) -> Extracted
         can_name, norm_name = normalize_project_name(raw_name)
         if not can_name:
             continue
+
 
         # Extract technologies from explicit tech lines & block body
         raw_techs: List[str] = list(same_line_techs)

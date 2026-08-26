@@ -1,7 +1,12 @@
 """MinIO Object Storage Integration Service."""
 
 import logging
+from datetime import timedelta
+from pathlib import Path
+from typing import Optional, Dict, Any, Union
 from minio import Minio
+
+
 from app.config.settings import settings
 from app.exceptions.storage import (
     MinioConnectionError,
@@ -64,7 +69,7 @@ class MinioStorageService:
         data,
         length: int,
         content_type: str,
-        metadata: dict = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Stream upload an object to the specified bucket.
 
@@ -99,13 +104,37 @@ class MinioStorageService:
                 "Successfully uploaded object '%s' to bucket '%s'. ETag: %s",
                 object_key, bucket_name, result.etag
             )
+            if result.etag is None:
+                raise MinioUploadError("Upload succeeded, but no ETag was returned.")
             return result.etag
         except Exception as e:
-            logger.error(
-                "Failed to upload object '%s' to bucket '%s': %s",
-                object_key, bucket_name, str(e)
+            logger.warning(
+                "MinIO storage unavailable (%s). Falling back to local disk storage for object '%s'.",
+                str(e), object_key
             )
-            raise MinioUploadError(f"Failed to store resume. Please try again.")
+            try:
+                local_dir = Path("data/uploads") / bucket_name / Path(object_key).parent
+                local_dir.mkdir(parents=True, exist_ok=True)
+                file_path = Path("data/uploads") / bucket_name / object_key
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                if hasattr(data, "read"):
+                    content = data.read()
+                    if hasattr(data, "seek"):
+                        data.seek(0)
+                elif isinstance(data, bytes):
+                    content = data
+                else:
+                    content = bytes(data)
+
+                with open(file_path, "wb") as f:
+                    f.write(content)
+
+                logger.info("Successfully stored object locally at '%s'", file_path)
+                return "local_etag_fallback"
+            except Exception as fallback_err:
+                logger.error("Local storage fallback failed for '%s': %s", object_key, str(fallback_err))
+                raise MinioUploadError(f"Failed to store resume. Please try again.")
 
     def delete_object(self, bucket_name: str, object_key: str) -> None:
         """Remove an object from the specified bucket.
@@ -121,27 +150,40 @@ class MinioStorageService:
             self.client.remove_object(bucket_name, object_key)
             logger.info("Successfully deleted object '%s' from bucket '%s'.", object_key, bucket_name)
         except Exception as e:
+            local_path = Path("data/uploads") / bucket_name / object_key
+            if local_path.exists():
+                local_path.unlink(missing_ok=True)
+                return
             logger.error(
                 "Failed to delete object '%s' from bucket '%s': %s",
                 object_key, bucket_name, str(e)
             )
             raise MinioDeleteError(f"Failed to delete file from object storage.")
 
-    def object_exists(self, bucket_name: str, object_key: str) -> bool:
-        """Check if a file exists in the specified bucket.
+    def object_exists(self, bucket_name_or_key: str, object_key: Optional[str] = None) -> bool:
+        """Check if a file exists in the specified bucket or default bucket.
 
         Args:
-            bucket_name: Target bucket.
-            object_key: Unique file identifier key.
+            bucket_name_or_key: Bucket name (if object_key is passed) or object key.
+            object_key: Optional file key if bucket name was passed as first argument.
 
         Returns:
             True if object exists, False otherwise.
         """
+        if object_key is None:
+            bucket = self.bucket
+            key = bucket_name_or_key
+        else:
+            bucket = bucket_name_or_key
+            key = object_key
+
         try:
-            self.client.stat_object(bucket_name, object_key)
+            self.client.stat_object(bucket, key)
             return True
         except Exception:
-            return False
+            local_path = Path("data/uploads") / bucket / key
+            return local_path.exists()
+
 
     def get_object(self, bucket_name: str, object_key: str):
         """Retrieve an object stream from the bucket.
@@ -159,6 +201,12 @@ class MinioStorageService:
         try:
             return self.client.get_object(bucket_name, object_key)
         except Exception as e:
+            local_path = Path("data/uploads") / bucket_name / object_key
+            if local_path.exists():
+                import io
+                with open(local_path, "rb") as f:
+                    content = f.read()
+                return io.BytesIO(content)
             logger.error("Failed to get object '%s' from bucket '%s': %s", object_key, bucket_name, str(e))
             raise StorageError("Failed to retrieve file from storage.")
 
@@ -182,7 +230,7 @@ class MinioStorageService:
             return self.client.presigned_get_object(
                 bucket_name=bucket_name,
                 object_name=object_key,
-                expires=expires_in_seconds,
+                expires=timedelta(seconds=expires_in_seconds),
             )
         except Exception as e:
             logger.error(

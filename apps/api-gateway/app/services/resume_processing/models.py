@@ -5,8 +5,12 @@ Day 21 (Text Extraction) -> Day 22 (OCR) -> Day 23 (Text Processing / Section De
 -> Day 24-27 (Entity Extraction) -> Day 28 (Structured JSON Persistence).
 """
 
+import uuid
 from typing import Optional, List, Dict, Any, Tuple, Union
 from pydantic import BaseModel, Field
+
+from app.services.resume_processing.interview_taxonomy import QuestionCategory, QuestionDifficulty
+
 
 
 class DocumentBlock(BaseModel):
@@ -115,6 +119,15 @@ class ExtractedDocument(BaseModel):
     has_extractable_text: bool = True  # Signal for Day 22 OCR if False
     ocr_metadata: Optional[OCRMetadata] = None  # Day 22 OCR statistics
 
+    @property
+    def raw_text(self) -> str:
+        return self.text
+
+    @property
+    def is_ocr(self) -> bool:
+        return self.extraction_method == "ocr"
+
+
 
 # Day 23 Text Processing & Section Detection Models
 
@@ -144,6 +157,10 @@ class ProcessedResumeText(BaseModel):
     normalized_tokens: List[str] = Field(default_factory=list)  # Lowercase tokens for indexing
     metadata: Dict[str, Any] = Field(default_factory=dict)  # Processing stats
     original_document: ExtractedDocument  # Reference to original ExtractedDocument (not mutated)
+
+    @property
+    def raw_text(self) -> str:
+        return self.original_document.text if self.original_document else self.cleaned_text
 
 
 # Day 24 Skills Extraction Models
@@ -205,6 +222,11 @@ class ExtractedEducation(BaseModel):
     education_records: List[EducationRecord] = Field(default_factory=list)
     total_count: int = 0
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def educations(self) -> List[EducationRecord]:
+        return self.education_records
+
 
 
 # Day 26 Experience Extraction Models
@@ -418,6 +440,19 @@ class ATSScore(BaseModel):
     scoring_method: str = "weighted_hybrid_rule_based"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+    @property
+    def overall_score(self) -> float:
+        return self.score
+
+    @property
+    def skill_match_score(self) -> float:
+        return self.skill_score
+
+    @property
+    def breakdown(self) -> Dict[str, Dict[str, Any]]:
+        return self.score_breakdown
+
+
 
 # Day 31 Similarity Matching Models
 
@@ -438,6 +473,183 @@ class SimilarityMatch(BaseModel):
 
     similarity_tier: str = "Low"
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def match_score(self) -> float:
+        return self.similarity_score
+
+
+# Day 32 FAISS Vector Indexing & Search Models
+
+class FAISSIndexResult(BaseModel):
+    """Result payload for vector indexing operation (Day 32)."""
+
+    entity_id: str
+    entity_type: str = "resume"  # "resume" or "job"
+    indexed: bool = True
+    dimension: int = 384
+    index_type: str = "IndexFlatIP"
+    vector_count: int = 0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        return "indexed" if self.indexed else "failed"
+
+
+
+class FAISSSearchItem(BaseModel):
+    """Single matching item from FAISS similarity search (Day 32)."""
+
+    entity_id: str
+    raw_similarity: float = 0.0
+    similarity_score: float = 0.0
+    similarity_tier: str = "Low Match"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FAISSSearchResult(BaseModel):
+    """Aggregated response for FAISS vector similarity search (Day 32)."""
+
+    query_type: str = "vector_search"  # "resume_to_jobs", "job_to_resumes", "vector_search"
+    total_results: int = 0
+    top_k: int = 10
+    results: List[FAISSSearchItem] = Field(default_factory=list)
+    execution_time_ms: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 33 Recommendation Models
+
+class RecommendationExplanation(BaseModel):
+    """Structured, evidence-based match explanation breakdown (Day 33)."""
+
+    summary: str = ""
+    strengths: List[str] = Field(default_factory=list)
+    gaps: List[str] = Field(default_factory=list)
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    matched_keywords: List[str] = Field(default_factory=list)
+    missing_keywords: List[str] = Field(default_factory=list)
+    role_domain_compatibility: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class JobRecommendation(BaseModel):
+    """Recommendation item representing a job suitable for a candidate (Day 33)."""
+
+    job_id: str
+    title: Optional[str] = None
+    company: Optional[str] = None
+    recommendation_score: float = 0.0
+    semantic_similarity_score: float = 0.0
+    ats_score: float = 0.0
+    skill_match_score: float = 0.0
+    education_match_score: float = 0.0
+    experience_match_score: float = 0.0
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    matched_keywords: List[str] = Field(default_factory=list)
+    missing_keywords: List[str] = Field(default_factory=list)
+    ranking_position: int = 1
+    explanation: RecommendationExplanation = Field(default_factory=RecommendationExplanation)
+    confidence: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateRecommendation(BaseModel):
+    """Recommendation item representing a candidate resume suitable for a job (Day 33)."""
+
+    candidate_id: Optional[str] = None
+    resume_id: str
+    full_name: Optional[str] = None
+    recommendation_score: float = 0.0
+    semantic_similarity_score: float = 0.0
+    ats_score: float = 0.0
+    skill_match_score: float = 0.0
+    education_match_score: float = 0.0
+    experience_match_score: float = 0.0
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    matched_keywords: List[str] = Field(default_factory=list)
+    missing_keywords: List[str] = Field(default_factory=list)
+    ranking_position: int = 1
+    explanation: RecommendationExplanation = Field(default_factory=RecommendationExplanation)
+    confidence: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class JobRecommendationResponse(BaseModel):
+    """Container payload for candidate job recommendations (Day 33)."""
+
+    resume_id: Optional[str] = None
+    recommendations: List[JobRecommendation] = Field(default_factory=list)
+    total_results: int = 0
+    top_k: int = 10
+    ranking_method: str = "weighted_hybrid_faiss_ats"
+    scoring_version: str = "day33-v1"
+    execution_time_ms: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateRecommendationResponse(BaseModel):
+    """Container payload for job candidate recommendations (Day 33)."""
+
+    job_id: Optional[str] = None
+    recommendations: List[CandidateRecommendation] = Field(default_factory=list)
+    total_results: int = 0
+    top_k: int = 10
+    ranking_method: str = "weighted_hybrid_faiss_ats"
+    scoring_version: str = "day33-v1"
+    execution_time_ms: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Day 34 AI Interview Question Models
+
+class InterviewQuestion(BaseModel):
+    """Single generated interview question with taxonomy, role/skill targeting, and source metadata (Day 34)."""
+
+    id: str = Field(default_factory=lambda: f"q-{uuid.uuid4().hex[:8]}")
+    question: str
+    category: QuestionCategory = QuestionCategory.TECHNICAL
+    difficulty: QuestionDifficulty = QuestionDifficulty.MEDIUM
+    question_type: str = "general"  # SKILL_SPECIFIC, ROLE_SPECIFIC, PROJECT, EXPERIENCE, BEHAVIORAL, SYSTEM_DESIGN, CODING, CONCEPTUAL
+    target_role: Optional[str] = None
+    target_skill: Optional[str] = None
+    rationale: Optional[str] = None
+    source: str = "rule_based"  # llm_openai, llm_gemini, rule_based_fallback
+    confidence: float = 1.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GeneratedInterviewQuestions(BaseModel):
+    """Container response payload for generated interview questions (Day 34)."""
+
+    resume_id: Optional[str] = None
+    questions: List[InterviewQuestion] = Field(default_factory=list)
+    total_count: int = 0
+    role: Optional[str] = None
+    domain: Optional[str] = None
+    experience_level: Optional[str] = None
+    skills_used: List[str] = Field(default_factory=list)
+    categories: List[QuestionCategory] = Field(default_factory=list)
+    difficulty: QuestionDifficulty = QuestionDifficulty.MEDIUM
+    provider: str = "auto"
+    execution_time_ms: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class InterviewQuestionRequest(BaseModel):
+    """Optional request parameters for interview question generation (Day 34)."""
+
+    count: int = Field(10, ge=1, le=50)
+    difficulty: QuestionDifficulty = QuestionDifficulty.MEDIUM
+    categories: Optional[List[QuestionCategory]] = None
+    provider: str = "auto"
+
+
+
 
 
 
