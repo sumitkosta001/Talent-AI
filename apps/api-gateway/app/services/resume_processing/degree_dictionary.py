@@ -122,15 +122,29 @@ DEGREE_DICTIONARY: Dict[str, Dict[str, Any]] = {
     # -----------------------------------------------------------------------
     "Senior Secondary": {
         "level": "SECONDARY",
-        "aliases": ["class xii", "class 12", "12th", "higher secondary", "senior secondary", "class xii (12th)"],
-        "pattern": re.compile(r'(?<!\w)(?:Class\s+(?:XII|12)|12th|Higher\s+Secondary|Senior\s+Secondary)(?!\w)', re.IGNORECASE),
+        "aliases": [
+            "class xii", "class 12", "12th", "higher secondary", "senior secondary",
+            "class xii (12th)", "intermediate", "up board, science", "up board intermediate",
+            "cbse 12", "cbse xii", "icse 12", "hsc", "plus two", "+2"
+        ],
+        "pattern": re.compile(
+            r'(?<!\w)(?:Class\s+(?:XII|12)|12th|Higher\s+Secondary|Senior\s+Secondary|Intermediate|UP\s+Board,\s*Science(?:\s*\(PCM\))?|HSC|Plus\s+Two|\+2)(?!\w)',
+            re.IGNORECASE,
+        ),
     },
     "Secondary": {
         "level": "SECONDARY",
-        "aliases": ["class x", "class 10", "10th", "secondary school", "secondary education"],
-        "pattern": re.compile(r'(?<!\w)(?:Class\s+(?:X|10)|10th|Secondary\s+School)(?!\w)', re.IGNORECASE),
+        "aliases": [
+            "class x", "class 10", "10th", "secondary school", "secondary education",
+            "high school", "matriculation", "ssc", "cbse 10", "cbse x", "icse 10", "up board"
+        ],
+        "pattern": re.compile(
+            r'(?<!\w)(?:Class\s+(?:X|10)|10th|Secondary\s+School|High\s+School|Matriculation|SSC|UP\s+Board)(?!\w)',
+            re.IGNORECASE,
+        ),
     },
 }
+
 
 # Reverse lookup alias map: lowercase alias -> (canonical_name, level)
 DEGREE_ALIAS_MAP: Dict[str, Tuple[str, str]] = {}
@@ -171,4 +185,12 @@ INSTITUTION_KEYWORDS: List[str] = [
     "MIT",
     "IIM",
     "AIIMS",
+    "Inter College",
+    "International School",
+    "Public School",
+    "High School",
+    "Junior College",
+    "Vidya Mandir",
+    "Grammar School",
 ]
+

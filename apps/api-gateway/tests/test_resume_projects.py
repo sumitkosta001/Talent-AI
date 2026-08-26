@@ -294,3 +294,48 @@ def test_empty_text_raises_exception():
     proc = _make_dummy_processed_text("")
     with pytest.raises(ResumeParsingError, match="contains no text"):
         extract_projects(proc)
+
+
+# ==============================================================================
+# 10. REAL CV TWO PROJECTS REGRESSION TEST
+# ==============================================================================
+
+def test_real_cv_two_projects_extraction():
+    """Verify that exactly 2 major projects are extracted from the test CV without false positive bullets."""
+    text = (
+        "PROJECTS\n"
+        "Learnify – AI-Powered Learning Platform\n"
+        "TypeScript, Next.js, Tailwind CSS, PostgreSQL, Prisma, Gemini API\n"
+        "- Architected a personalized AI learning platform generating dynamic roadmaps and quizzes.\n"
+        "- Integrated Google Gemini API for real-time concept explanation and feedback.\n"
+        "- Designed responsive UI with Next.js App Router and Tailwind CSS.\n\n"
+        "QuickHotelPost – AI Content Generator for Hotels\n"
+        "React.js, Node.js, Express.js, MongoDB, OpenAI API\n"
+        "- Built an automated marketing content generator for hospitality businesses.\n"
+        "- Developed multi-channel social media scheduler reducing manual effort by 60%.\n"
+        "- Integrated OpenAI API for custom brand voice copy generation.\n"
+    )
+    sections = [("PROJECTS", "PROJECTS", text)]
+    proc = _make_dummy_processed_text(text, sections)
+
+    result = extract_projects(proc)
+    assert result.total_count == 2
+    assert len(result.projects) == 2
+
+    # Project 1: Learnify
+    p1 = result.projects[0]
+    assert p1.name is not None
+    assert "Learnify" in p1.name
+    assert any("Next.js" in t for t in p1.technologies)
+    assert any("TypeScript" in t for t in p1.technologies)
+    assert "Gemini API" in p1.technologies or "Google Gemini" in p1.technologies
+
+    # Project 2: QuickHotelPost
+    p2 = result.projects[1]
+    assert p2.name is not None
+    assert "QuickHotelPost" in p2.name
+    assert any("React" in t for t in p2.technologies)
+    assert any("Node" in t for t in p2.technologies)
+    assert any("MongoDB" in t for t in p2.technologies)
+    assert "OpenAI API" in p2.technologies or "OpenAI" in p2.technologies
+

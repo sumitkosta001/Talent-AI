@@ -318,3 +318,58 @@ def test_empty_text_raises_exception():
     proc = _make_dummy_processed_text("")
     with pytest.raises(ResumeParsingError, match="contains no text"):
         extract_education(proc)
+
+
+# ==============================================================================
+# 9. REAL CV MULTI-ENTRY REGRESSION TEST
+# ==============================================================================
+
+def test_real_cv_three_education_entries():
+    """Verify that all 3 education entries from the test CV are extracted separately."""
+    text = (
+        "EDUCATION\n"
+        "National Institute of Technology, Rourkela\n"
+        "Bachelor of Technology in Electrical Engineering\n"
+        "CGPA 7.79\n"
+        "August 2023 – Present\n\n"
+        "Jawahar Lal Nehru Inter College, Kanpur\n"
+        "UP Board, Science (PCM)\n"
+        "Percentage 82%\n"
+        "May 2022\n\n"
+        "SGM International School, Kanpur\n"
+        "UP Board\n"
+        "Percentage 85.56%\n"
+        "May 2020\n"
+    )
+    sections = [("EDUCATION", "EDUCATION", text)]
+    proc = _make_dummy_processed_text(text, sections)
+
+    result = extract_education(proc)
+    assert result.total_count == 3
+    assert len(result.education_records) == 3
+
+    # Entry 1: NIT Rourkela
+    r1 = result.education_records[0]
+    assert r1.degree == "Bachelor of Technology"
+    assert "National Institute of Technology" in (r1.institution or "")
+    assert r1.cgpa == 7.79
+    assert r1.score_type == "CGPA"
+    assert r1.field_of_study == "Electrical Engineering"
+    assert r1.start_year == 2023
+
+    # Entry 2: Jawahar Lal Nehru Inter College
+    r2 = result.education_records[1]
+    assert r2.degree == "Senior Secondary"
+    assert "Jawahar Lal Nehru Inter College" in (r2.institution or "")
+    assert r2.percentage == 82.0
+    assert r2.score_type == "PERCENTAGE"
+    assert r2.graduation_year == 2022
+
+    # Entry 3: SGM International School
+    r3 = result.education_records[2]
+    assert r3.degree == "Secondary"
+    assert "SGM International School" in (r3.institution or "")
+    assert r3.percentage == 85.56
+    assert r3.score_type == "PERCENTAGE"
+    assert r3.graduation_year == 2020
+

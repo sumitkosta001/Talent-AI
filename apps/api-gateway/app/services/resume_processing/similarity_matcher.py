@@ -13,6 +13,7 @@ from app.services.resume_processing.embedding_service import (
     build_job_embedding_text,
     generate_embedding,
     calculate_cosine_similarity,
+    calculate_cosine_similarity as compute_cosine_similarity,
     normalize_similarity_score,
     get_similarity_tier,
     DEFAULT_MODEL_NAME,

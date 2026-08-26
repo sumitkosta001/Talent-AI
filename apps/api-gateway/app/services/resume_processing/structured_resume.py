@@ -11,6 +11,7 @@ import logging
 
 from app.exceptions.resume import ResumeParsingError
 from .models import (
+    ExtractedDocument,
     ProcessedResumeText,
     ExtractedSkills,
     ExtractedEducation,
@@ -144,10 +145,16 @@ def build_structured_resume(
         ValueError: If Level 2 business validation fails.
     """
     if processed_text is None:
-        raise ResumeParsingError("Cannot build structured resume from a None ProcessedResumeText.")
+        raise ResumeParsingError(
+            "Cannot build structured resume from a None ProcessedResumeText. "
+            "Ensure document extraction and text processing ran successfully before calling build_structured_resume."
+        )
 
     if not processed_text.normalized_text or not processed_text.normalized_text.strip():
-        raise ResumeParsingError("The processed resume document contains no text.")
+        raise ResumeParsingError(
+            "Processed resume text contains no text. "
+            "The document may be empty, corrupt, or failed to extract readable content."
+        )
 
     start_time = time.perf_counter()
 

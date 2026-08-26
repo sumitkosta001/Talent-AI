@@ -87,37 +87,42 @@ def parse_year_and_status(text: str) -> Tuple[Optional[int], Optional[int], Opti
     graduation_year: Optional[int] = None
     status: Optional[str] = None
 
-    # Check for range: e.g. 2022 - 2026, 2022–2026, 2022 to 2026
-    range_match = re.search(r'\b(19[7-9]\d|20[0-3]\d)\s*(?:-|–|—|to)\s*(19[7-9]\d|20[0-3]\d)\b', text, re.IGNORECASE)
-    if range_match:
-        start_year = int(range_match.group(1))
-        end_year = int(range_match.group(2))
-        graduation_year = end_year
-        status = "COMPLETED"
+    # Check for ongoing range: e.g. 2023 - Present, 2023–Present, 2023 to Current
+    ongoing_match = re.search(r'\b(19[7-9]\d|20[0-3]\d)\s*(?:-|–|—|to)\s*(?:Present|Current|Ongoing|Now)\b', text, re.IGNORECASE)
+    if ongoing_match:
+        start_year = int(ongoing_match.group(1))
+        status = "EXPECTED"
 
-    # Check expected graduation phrases
+    # Check for completed year range: e.g. 2022 - 2026, 2022–2026, 2022 to 2026
+    if not start_year:
+        range_match = re.search(r'\b(19[7-9]\d|20[0-3]\d)\s*(?:-|–|—|to)\s*(19[7-9]\d|20[0-3]\d)\b', text, re.IGNORECASE)
+        if range_match:
+            start_year = int(range_match.group(1))
+            end_year = int(range_match.group(2))
+            graduation_year = end_year
+            status = "COMPLETED"
+
+    # Check expected graduation phrases: Expected Graduation: 2027 or Class of 2027
     expected_match = re.search(
-        r'(?:expected|present|pursuing|class\s+of)\b.*?\b(20[2-3]\d)\b',
+        r'(?:expected|graduation\s*:\s*|class\s+of)\b.*?\b(20[2-3]\d)\b',
         text,
         re.IGNORECASE,
     )
     if expected_match:
         grad_yr = int(expected_match.group(1))
-        if graduation_year is None:
-            graduation_year = grad_yr
+        graduation_year = grad_yr
         if end_year is None:
             end_year = grad_yr
         status = "EXPECTED"
 
     # Check single completion year phrase if no range found yet
-    if graduation_year is None:
+    if graduation_year is None and not start_year:
         grad_match = re.search(
             r'(?:graduated|completed|passout|passing\s+year|year\s*:\s*|in\s+)?\b(19[7-9]\d|20[0-3]\d)\b',
             text,
             re.IGNORECASE,
         )
         if grad_match:
-            # Verify context is not phone or CGPA
             candidate_yr = int(grad_match.group(1))
             if not re.search(r'cgpa|gpa|cpi|phone|tel|mobile', text, re.IGNORECASE):
                 graduation_year = candidate_yr
@@ -127,6 +132,7 @@ def parse_year_and_status(text: str) -> Tuple[Optional[int], Optional[int], Opti
         status = "COMPLETED"
 
     return start_year, end_year, graduation_year, status
+
 
 
 def parse_score(text: str) -> Tuple[Optional[float], Optional[float], Optional[str]]:

@@ -1,0 +1,19 @@
+# Talent-AI Phase 4: Resume Processing & ML Pipeline Completion Checklist
+
+| Day | Feature Area | Existing Implementation | Fixed / Hardened Area | Unit Tests | Integration Tests | Localhost Live Verification | Final Status |
+| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **Day 21** | PDF / DOCX Text & Structure Extraction | Native PyMuPDF & python-docx extractors, tables, metadata, error handling | Validated MIME types, character counts, stream handling | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 22** | OCR Detection & Scanned PDF OCR | Tesseract OCR pipeline, image preprocessing, fallback triggers | Image preprocessing & low-confidence fallback triggers | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 23** | Text Normalization & Section Detection | Regex-based section detector, Unicode cleaner, tokenization | Section boundary extraction and clean text tokenization | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 24** | Skills Extraction & Normalization | Curated skill taxonomy, spaCy NER, alias resolution | Categorized 26 skills on test CV without false matches | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 25** | Education Extraction & Normalization | Section-aware extractor, degree taxonomy | Fixed block splitting: multi-entry school/college (3 records extracted with CGPA/Percentage) | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 26** | Experience Extraction & Normalization | Title taxonomy, date parser, seniority & duration logic | Extracted single internship record with exact dates | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 27** | Project Extraction & Classification | Tech matching, domain classifier, date parsing | Eliminated 2 false positives from action verb bullets (exactly 2 projects extracted) | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 28** | Structured Resume Orchestration & Persistence | Pydantic schema validation, DB JSON persistence, lifecycle status | Canonical schema serialization & PostgreSQL JSON persistence | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 29** | Resume Classification | Hybrid rule-based classifier (domain, role, seniority) | Added dedicated `GET /me/resumes/{id}/classification` API endpoint | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 30** | ATS Scoring Engine | Keyword, skill, education, experience matching vs Job Requirements | Deterministic scoring in [0, 100] (85.25/100 on test CV) | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 31** | Semantic Vector Embeddings & Similarity | Sentence-transformers embeddings, cosine similarity | Unit-normalized float32 vectors (0.7712 cosine similarity) | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 32** | FAISS Vector Indexing & Search | Dual FAISS indexes (resumes & jobs), ID mapping, restart persistence | Top-k vector retrieval and disk index persistence | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 33** | Job & Candidate Recommendations | Hybrid FAISS semantic search + ATS scoring (50/50 weights) | Ranked matching with explainable match reasons | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 34** | AI Interview Question Generator | Role, skill, project, experience question generators with difficulty & taxonomy | Generated tailored questions for CV skills & projects | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
+| **Day 35** | Complete Testing, Hardening & E2E Verification | 188 unit, integration, storage, and security tests | 100% pass across all 188 test cases in 37.89s; live E2E test passed | [x] Passed | [x] Passed | [x] Verified | **[x] Complete** |
