@@ -38,6 +38,7 @@ def create_application() -> FastAPI:
         docs_url=settings.app.docs_url if settings.app.debug else None,
         redoc_url=settings.app.redoc_url if settings.app.debug else None,
         openapi_url=settings.app.openapi_url if settings.app.debug else None,
+        swagger_ui_parameters={"persistAuthorization": True},
         contact={
             "name": settings.app.contact_name,
             "email": settings.app.contact_email,
@@ -47,6 +48,7 @@ def create_application() -> FastAPI:
         },
         lifespan=lifespan,
     )
+
 
     # --------------------------------------------------------------------------
     # MIDDLEWARE REGISTRATION PIPELINE

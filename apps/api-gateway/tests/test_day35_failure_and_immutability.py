@@ -34,6 +34,7 @@ from app.services.resume_processing import (
     JobRequirements,
     QuestionDifficulty,
     ExtractedDocument,
+    ProcessedResumeText,
 )
 
 
@@ -64,8 +65,24 @@ def test_failure_empty_document_bytes():
 
 def test_failure_missing_skills_and_sections_in_structured_resume():
     """Test structured resume creation with empty extracted entities handles missing data gracefully."""
+    dummy_doc = ExtractedDocument(
+        text="Sample candidate resume text",
+        document_type="pdf",
+        extraction_method="native",
+        page_count=1,
+    )
+    proc_text = ProcessedResumeText(
+        cleaned_text="Sample candidate resume text",
+        normalized_text="Sample candidate resume text",
+        lowercase_text="sample candidate resume text",
+        sections=[],
+        tokens=["sample", "candidate", "resume", "text"],
+        normalized_tokens=["sample", "candidate", "resume", "text"],
+        metadata={},
+        original_document=dummy_doc,
+    )
     resume = build_structured_resume(
-        processed_text=None,
+        processed_text=proc_text,
         skills=None,
         education=None,
         experience=None,

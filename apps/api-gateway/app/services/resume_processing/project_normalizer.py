@@ -144,24 +144,23 @@ def classify_project(name: str, description: str, techs: List[str]) -> Tuple[str
 
 
 def deduplicate_project_records(records: List[ProjectRecord]) -> List[ProjectRecord]:
-    """Deduplicate project records based on normalized project name and technologies.
+    """Deduplicate project records based primarily on normalized project name.
 
     Returns deduplicated records preserving document order.
     """
     if not records:
         return []
 
-    seen: Set[Tuple[str, str]] = set()
+    seen_names: Set[str] = set()
     deduped: List[ProjectRecord] = []
 
     for rec in records:
-        key = (
-            (rec.normalized_name or "").lower(),
-            ",".join(sorted(rec.normalized_technologies)),
-        )
-        if key in seen:
+        name_key = (rec.normalized_name or "").strip().lower()
+        if not name_key:
             continue
-        seen.add(key)
+        if name_key in seen_names:
+            continue
+        seen_names.add(name_key)
         deduped.append(rec)
 
     return deduped

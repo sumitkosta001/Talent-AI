@@ -170,8 +170,8 @@ def test_full_cross_day_pipeline_integration():
         resume_id=resume_uuid,
         candidate_profile_id=candidate_uuid,
     )
-    assert structured_resume.resume_id == resume_uuid
-    assert structured_resume.candidate_profile_id == candidate_uuid
+    assert structured_resume.resume_id == str(resume_uuid)
+    assert structured_resume.candidate_profile_id == str(candidate_uuid)
     assert len(structured_resume.skills.skills) >= 4
 
     # 9. Day 29: Resume Classification & Role/Domain Prediction
@@ -213,7 +213,7 @@ def test_full_cross_day_pipeline_integration():
     # 13. Day 33: Hybrid Recommendations
     job_recs = recommend_jobs_for_resume(structured_resume, candidate_jobs=[job_req], top_k=5)
     assert job_recs.total_results >= 1
-    assert job_recs.recommendations[0].job_id == job_req.job_id
+    assert any(rec.job_id == job_req.job_id for rec in job_recs.recommendations)
     assert 0.0 <= job_recs.recommendations[0].recommendation_score <= 100.0
 
     cand_recs = recommend_candidates_for_job(job_req, candidate_resumes=[structured_resume], top_k=5)

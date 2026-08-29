@@ -97,9 +97,17 @@ SECTION_ALIASES: Dict[str, List[str]] = {
         "licenses & certifications",
         "licenses and certifications",
         "certificates",
+        "certificate",
+        "certification",
         "professional certifications",
         "courses & certifications",
         "certifications & licenses",
+        "achievements/certifications",
+        "achievements & certifications",
+        "achievements and certifications",
+        "certifications & achievements",
+        "certifications and achievements",
+        "certifications/achievements",
     ],
     "ACHIEVEMENTS": [
         "achievements",
@@ -108,12 +116,16 @@ SECTION_ALIASES: Dict[str, List[str]] = {
         "accomplishments",
         "awards & honors",
         "major achievements",
+        "achievements/certifications",
+        "achievements & certifications",
+        "achievements and certifications",
     ],
     "AWARDS": [
         "awards",
         "honors",
         "recognitions",
         "awards and honors",
+        "honors and awards",
     ],
     "PUBLICATIONS": [
         "publications",
@@ -132,6 +144,11 @@ SECTION_ALIASES: Dict[str, List[str]] = {
         "hobbies",
         "activities & interests",
         "hobbies & interests",
+        "extracurricular activities",
+        "extracurricular",
+        "activities",
+        "volunteering",
+        "leadership",
     ],
     "REFERENCES": [
         "references",
@@ -309,6 +326,12 @@ def _evaluate_heading_candidate(line: str, is_docx_heading: bool = False) -> Tup
     # Reject lines containing email or URL patterns
     if "@" in line_clean or "http" in line_clean or "www." in line_clean:
         return None, 0.0
+
+    # Reject field labels inside entries (e.g. "Technologies:", "Description:", "Date:") unless ALL CAPS main heading
+    field_labels = {"technologies", "tech stack", "tools", "stack", "tech", "description", "details", "overview", "date", "dates", "duration", "timeline", "role", "github", "demo", "link", "url", "repo"}
+    if line_clean in field_labels:
+        if line.endswith(":") or not line.isupper():
+            return None, 0.0
 
     # 2. Alias dictionary lookup
     matched_canonical = ALIAS_TO_CANONICAL.get(line_clean)
