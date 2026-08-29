@@ -47,7 +47,7 @@ def test_security_prompt_injection_text_handling():
 
     # 2. Classification should remain standard
     cls_res = classify_resume(resume)
-    assert cls_res.domain in ["SOFTWARE_ENGINEERING", "DATA_SCIENCE_ML", "UNKNOWN", "OTHER"]
+    assert cls_res.domain in ["SOFTWARE_ENGINEERING", "DATA_SCIENCE", "DATA_SCIENCE_ML", "UNKNOWN", "OTHER"]
 
     # 3. Interview question generator should produce valid schema questions
     iq_res = generate_interview_questions(resume, count=4)

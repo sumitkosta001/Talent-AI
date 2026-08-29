@@ -27,7 +27,8 @@ from app.exceptions.users import UserNotFoundError
 logger = logging.getLogger("talentai.auth.dependencies")
 
 # Singleton HTTPBearer instance enforcing Authorization: Bearer <token>
-bearer_scheme = HTTPBearer(auto_error=False)
+bearer_scheme = HTTPBearer(bearerFormat="JWT", auto_error=False)
+
 
 
 async def get_current_user(
@@ -51,8 +52,12 @@ async def get_current_user(
         logger.warning("Authentication failed: Missing Authorization bearer header.")
         raise AuthenticationError("Authorization bearer token required.")
 
-    token = credentials.credentials
+    token = credentials.credentials.strip()
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+
     payload = decode_access_token(token)
+
 
     user_id_str = payload.get("sub")
     if not user_id_str:

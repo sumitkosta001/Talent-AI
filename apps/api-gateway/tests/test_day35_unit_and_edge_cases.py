@@ -111,8 +111,10 @@ def test_experience_duration_and_seniority_normalization():
 
 def test_project_classification_normalization():
     """Test project type classification."""
-    assert classify_project_type("Machine Learning Resume Classifier", "Classifier built using PyTorch", ["PyTorch"]) in ["MACHINE_LEARNING", "ARTIFICIAL_INTELLIGENCE", "DATA_SCIENCE"]
-    assert classify_project_type("Full Stack Web Application", "Built using React and Node", ["React.js", "Node.js"]) in ["FULL_STACK", "WEB_APPLICATION"]
+    cls1, _ = classify_project_type("Machine Learning Resume Classifier", "Classifier built using PyTorch", ["PyTorch"])
+    assert cls1 in ["MACHINE_LEARNING", "ARTIFICIAL_INTELLIGENCE", "DATA_SCIENCE"]
+    cls2, _ = classify_project_type("Full Stack Web Application", "Built using React and Node", ["React.js", "Node.js"])
+    assert cls2 in ["FULL_STACK", "WEB_APPLICATION"]
 
 
 def test_ats_score_clamping_and_bounds():

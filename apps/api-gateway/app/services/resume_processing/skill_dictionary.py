@@ -448,11 +448,11 @@ SKILL_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "category": "AI",
     },
     "OpenAI": {
-        "aliases": ["openai"],
+        "aliases": ["openai", "openai api"],
         "category": "AI",
     },
     "Gemini": {
-        "aliases": ["gemini", "google gemini"],
+        "aliases": ["gemini", "gemini api", "google gemini", "google gemini api"],
         "category": "AI",
     },
     "Hugging Face": {
@@ -490,6 +490,11 @@ SKILL_DICTIONARY: Dict[str, Dict[str, Any]] = {
     "Playwright": {
         "aliases": ["playwright"],
         "category": "TESTING",
+    },
+
+    "Prisma": {
+        "aliases": ["prisma", "prisma orm"],
+        "category": "DATABASE",
     },
 
     # -----------------------------------------------------------------------

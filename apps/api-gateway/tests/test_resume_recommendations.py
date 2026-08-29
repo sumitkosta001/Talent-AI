@@ -274,7 +274,7 @@ def test_job_recommendation_ranking_python_vs_designer():
     py_job = create_sample_python_job()
     design_job = create_sample_designer_job()
 
-    response = recommend_jobs_for_resume(python_resume, candidate_jobs=[py_job, design_job], top_k=10)
+    response = recommend_jobs_for_resume(python_resume, candidate_jobs=[py_job, design_job], top_k=50)
 
     assert response.total_results >= 2
     py_rec = next(r for r in response.recommendations if r.job_id == py_job.job_id)
@@ -289,13 +289,14 @@ def test_candidate_recommendation_ranking_python_vs_designer():
     python_resume = create_sample_python_developer_resume()
     design_resume = create_sample_designer_resume()
 
-    response = recommend_candidates_for_job(py_job, candidate_resumes=[python_resume, design_resume], top_k=10)
+    response = recommend_candidates_for_job(py_job, candidate_resumes=[python_resume, design_resume], top_k=50)
 
     assert response.total_results >= 2
     py_rec = next(r for r in response.recommendations if r.resume_id == python_resume.resume_id)
     design_rec = next(r for r in response.recommendations if r.resume_id == design_resume.resume_id)
     assert py_rec.recommendation_score > design_rec.recommendation_score
     assert py_rec.ranking_position < design_rec.ranking_position
+
 
 
 def test_deduplication_in_job_recommendations():
