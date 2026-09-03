@@ -642,6 +642,30 @@ async def delete_resume(
     """Soft-delete candidate resume securely with auto-promotion."""
     return await service.delete_resume(current_user.id, resume_id)
 
+@router.get(
+    "/me/resumes/{resume_id}/structured",
+    response_model=StructuredResume,
+    status_code=status.HTTP_200_OK,
+    summary="Get canonical structured resume JSON",
+    description="Retrieve canonical Day 28 structured JSON representation (skills, education, experience, projects, metadata) for processed candidate resume.",
+)
+async def get_candidate_structured_resume(
+    resume_id: UUID,
+    current_user: Annotated[User, Depends(get_current_candidate)],
+    service: Annotated[ResumeService, Depends(get_resume_service)],
+) -> StructuredResume:
+    """Retrieve Day 28 canonical structured JSON for candidate resume."""
+    from fastapi import HTTPException
+
+    resume = await service.get_resume_metadata(current_user.id, resume_id)
+    if not resume.structured_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume has not been processed into structured format yet. Please trigger processing first."
+        )
+
+    return StructuredResume.model_validate(resume.structured_data)
+
 
 @router.get(
     "/me/resumes/{resume_id}/classification",

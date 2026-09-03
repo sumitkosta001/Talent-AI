@@ -43,9 +43,15 @@ export class JobsService {
       return list;
     }
 
-    const res = await fetch('/api/jobs');
-    if (!res.ok) throw new Error('Failed to fetch jobs');
-    return res.json();
+    try {
+      const res = await fetch('/api/jobs');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Jobs API endpoint unavailable, falling back to job catalog:', e);
+    }
+    return MOCK_JOBS;
   }
 
   static async getJobById(id: string): Promise<Job | null> {

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useResume } from '@/hooks/useResume';
+import { useJobRecommendations } from '@/hooks/useJobRecommendations';
 import { useJobs } from '@/hooks/useJobs';
 import RecommendedJobCard from '@/components/jobs/RecommendedJobCard';
 import AppliedJobs from '@/components/jobs/AppliedJobs';
@@ -19,16 +21,54 @@ type TabType = 'recommended' | 'applied' | 'saved';
 export default function CandidateJobsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('recommended');
   
+  const { currentResume } = useResume();
+  const resumeId = currentResume?.id || null;
+  const { data: recData, loading: recLoading, error: recError } = useJobRecommendations(resumeId);
+
   const {
     jobs,
-    loading,
+    loading: jobsLoading,
     filters,
     updateFilter,
     resetFilters,
   } = useJobs();
 
-  // Recommended jobs based on high ATS match score (>=85%)
-  const recommendations = jobs.filter(j => j.match >= 85);
+  const loading = jobsLoading || recLoading;
+
+  // Use real backend Day 33 job recommendations if available, otherwise filter jobs
+  const realRecs = recData?.recommendations || [];
+  const recommendations = realRecs.length > 0
+    ? realRecs.map((rec) => {
+        const found = jobs.find((j) => j.id === rec.job_id);
+        return {
+          id: rec.job_id,
+          companyId: found?.companyId || 'company',
+          company: rec.company || found?.company || 'Company',
+          role: rec.title || found?.role || 'Job Role',
+          title: rec.title || found?.title || 'Job Role',
+          salary: found?.salary || '$120K–$160K',
+          match: Math.round(rec.recommendation_score <= 1 ? rec.recommendation_score * 100 : rec.recommendation_score),
+          location: found?.location || 'Remote',
+          logo: found?.logo || 'J',
+          logoColor: found?.logoColor || 'bg-blue-600',
+          experience: found?.experience || '3+ years',
+          skills: rec.matched_skills.length > 0 ? rec.matched_skills : (found?.skills || []),
+          bookmarked: false,
+          applied: false,
+          description: rec.explanation?.summary || found?.description || '',
+          responsibilities: found?.responsibilities || [],
+          requirements: found?.requirements || [],
+          benefits: found?.benefits || [],
+          date: 'Recent',
+          type: found?.type || 'Full-time',
+          remoteStatus: found?.remoteStatus || 'Remote',
+          deadline: 'Open',
+          applicantsCount: found?.applicantsCount || 10,
+          isFeatured: true,
+          category: found?.category || 'Engineering',
+        };
+      })
+    : jobs.filter((j) => j.match >= 85);
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'recommended', label: 'AI Recommended Jobs' },
