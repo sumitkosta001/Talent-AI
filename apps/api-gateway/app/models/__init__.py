@@ -4,7 +4,7 @@ Re-exports all domain entities and enumeration types so Alembic and application 
 can import models directly from `app.models`.
 """
 
-from app.models.enums import UserRole, AuthProvider, SkillCategory, SkillProficiency, ResumeStatus
+from app.models.enums import UserRole, AuthProvider, SkillCategory, SkillProficiency, ResumeStatus, JobStatus, WorkMode
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.candidate_profile import CandidateProfile
@@ -12,6 +12,8 @@ from app.models.candidate_education import CandidateEducation
 from app.models.candidate_experience import CandidateExperience
 from app.models.candidate_skill import CandidateSkill
 from app.models.resume import Resume
+from app.models.company import Company
+from app.models.job import Job
 
 __all__ = [
     "UserRole",
@@ -19,6 +21,8 @@ __all__ = [
     "SkillCategory",
     "SkillProficiency",
     "ResumeStatus",
+    "JobStatus",
+    "WorkMode",
     "User",
     "RefreshToken",
     "CandidateProfile",
@@ -26,5 +30,7 @@ __all__ = [
     "CandidateExperience",
     "CandidateSkill",
     "Resume",
+    "Company",
+    "Job",
 ]
 

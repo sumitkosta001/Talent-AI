@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Home, User, Upload, Briefcase, Building, Bell, Settings,
   BarChart2, Search, LogOut, FileText, ChevronLeft, ChevronRight,
-  Menu, X, Bot, ChevronDown, Users, Activity, FileSpreadsheet
+  Menu, X, Bot, ChevronDown, Users, Activity, FileSpreadsheet, HelpCircle
 } from 'lucide-react';
 import Breadcrumbs from '@/components/global/Breadcrumbs';
 import ThemeSwitcher from '@/components/global/ThemeSwitcher';
@@ -22,6 +22,7 @@ const candidateNav = [
   { id: 'resume-upload', label: 'Upload Resume', icon: Upload, href: '/candidate/resume/upload' },
   { id: 'resume-analysis', label: 'Resume Analysis', icon: FileText, href: '/candidate/resume/analysis' },
   { id: 'ats-score', label: 'ATS Score', icon: Bot, href: '/candidate/ats' },
+  { id: 'interview-prep', label: 'AI Interview Prep', icon: HelpCircle, href: '/candidate/interview' },
   { id: 'job-listing', label: 'Browse Jobs', icon: Briefcase, href: '/candidate/jobs' },
   { id: 'my-applications', label: 'My Applications', icon: FileText, href: '/candidate/applications' },
   { id: 'notifications', label: 'Notifications', icon: Bell, href: '/candidate/notifications' },

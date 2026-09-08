@@ -92,3 +92,29 @@ class ResumeStatus(str, enum.Enum):
     PROCESSING = "processing"
     PROCESSED = "processed"
     FAILED = "failed"
+
+
+class JobStatus(str, enum.Enum):
+    """Lifecycle publication status for job postings."""
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    CLOSED = "closed"
+
+
+class WorkMode(str, enum.Enum):
+    """Workplace location mode for job postings."""
+
+    REMOTE = "remote"
+    HYBRID = "hybrid"
+    ONSITE = "onsite"
+
+class ApplicationStatus(str, enum.Enum):
+    """Lifecycle status for candidate job applications."""
+
+    APPLIED = "applied"
+    REVIEWED = "reviewed"
+    INTERVIEWED = "interviewed"
+    REJECTED = "rejected"
+    ACCEPTED = "accepted"
+

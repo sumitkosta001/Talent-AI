@@ -29,13 +29,14 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     String,
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import BaseModel
@@ -43,17 +44,10 @@ from app.models.enums import AuthProvider, UserRole
 
 # ---------------------------------------------------------------------------
 # TYPE_CHECKING imports for forward-referenced relationship targets.
-#
-# These models do not exist yet. By importing them inside TYPE_CHECKING,
-# we get IDE autocompletion and type-checker support without triggering
-# ImportError at runtime. When these models are created, the relationship()
-# back_populates will link them bidirectionally.
 # ---------------------------------------------------------------------------
 if TYPE_CHECKING:
     from app.models.refresh_token import RefreshToken
-    # from app.models.resume import Resume
-    # from app.models.job_application import JobApplication
-    # from app.models.company import Company
+    from app.models.company import Company
     # from app.models.interview import Interview
     # from app.models.notification import Notification
     # from app.models.audit_log import AuditLog
@@ -310,6 +304,22 @@ class User(BaseModel):
         uselist=False,
         cascade="all, delete-orphan",
         doc="Candidate profile associated with this user account.",
+    )
+
+    company_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Foreign key referencing companies.id for recruiter/hiring manager affiliation.",
+    )
+
+    company: Mapped[Optional["Company"]] = relationship(
+        "Company",
+        back_populates="recruiters",
+        uselist=False,
+        doc="Company entity associated with this recruiter/user.",
     )
 
     #

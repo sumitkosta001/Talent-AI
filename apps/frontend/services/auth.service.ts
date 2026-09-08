@@ -120,6 +120,52 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<UserSessionData | null> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_token') : null;
+    if (token) {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/auth/me`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const body = await res.json();
+          const userSession: UserSessionData = {
+            id: body.user.id,
+            email: body.user.email,
+            role: body.user.role,
+            name: body.user.full_name,
+            accountState: body.user.is_verified ? 'Active' : 'EmailNotVerified',
+            twoFactorEnabled: false,
+            lastLogin: new Date().toISOString(),
+            lastDevice: 'Chrome (Windows)',
+            trustedDevices: [],
+          };
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('talentai_auth_user', JSON.stringify(userSession));
+          }
+
+          return userSession;
+        }
+
+        if (res.status === 401) {
+          const fresh = await this.refreshTokens();
+          if (fresh) return fresh.user;
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('talentai_auth_token');
+            localStorage.removeItem('talentai_auth_refresh_token');
+            localStorage.removeItem('talentai_auth_user');
+          }
+        }
+      } catch (err) {
+        console.warn('Backend GET /api/v1/auth/me error:', err);
+      }
+    }
+
     if (DEV_MODE) {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
       if (stored) {
@@ -131,51 +177,8 @@ export const authService = {
       }
       return MOCK_USER_SESSION;
     }
-    const token = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_token') : null;
-    if (!token) return null;
 
-    const res = await fetch(`${API_URL}/api/v1/auth/me`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        try {
-          const fresh = await this.refreshTokens();
-          if (fresh) return fresh.user;
-        } catch {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('talentai_auth_token');
-            localStorage.removeItem('talentai_auth_refresh_token');
-            localStorage.removeItem('talentai_auth_user');
-          }
-        }
-      }
-      return null;
-    }
-
-    const body = await res.json();
-    const userSession: UserSessionData = {
-      id: body.user.id,
-      email: body.user.email,
-      role: body.user.role,
-      name: body.user.full_name,
-      accountState: body.user.is_verified ? 'Active' : 'EmailNotVerified',
-      twoFactorEnabled: false,
-      lastLogin: new Date().toISOString(),
-      lastDevice: 'Chrome (Windows)',
-      trustedDevices: [],
-    };
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('talentai_auth_user', JSON.stringify(userSession));
-    }
-
-    return userSession;
+    return null;
   },
 
   async refreshTokens(): Promise<{ user: UserSessionData; token: string } | null> {

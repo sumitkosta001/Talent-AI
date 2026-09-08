@@ -66,11 +66,46 @@ export function useRecruiterJobs() {
     return !!newJob;
   }, [jobs, handleCreate]);
 
+  const handlePublish = useCallback(async (id: string) => {
+    try {
+      const updated = await RecruiterJobsService.publishJob(id);
+      setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
+      return true;
+    } catch (err: any) {
+      alert(err?.message || 'Failed to publish job');
+      return false;
+    }
+  }, []);
+
+  const handleUnpublish = useCallback(async (id: string) => {
+    try {
+      const updated = await RecruiterJobsService.unpublishJob(id);
+      setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
+      return true;
+    } catch (err: any) {
+      alert(err?.message || 'Failed to unpublish job');
+      return false;
+    }
+  }, []);
+
   const handleClose = useCallback(async (id: string) => {
-    return handleUpdate(id, { status: 'Closed' });
-  }, [handleUpdate]);
+    if (!window.confirm('Are you sure you want to close this job listing? Closed jobs cannot be republished.')) {
+      return false;
+    }
+    try {
+      const updated = await RecruiterJobsService.closeJob(id);
+      setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
+      return true;
+    } catch (err: any) {
+      alert(err?.message || 'Failed to close job');
+      return false;
+    }
+  }, []);
 
   const handleDelete = useCallback(async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this job posting?')) {
+      return false;
+    }
     try {
       await RecruiterJobsService.deleteJob(id);
       setJobs((prev) => prev.filter((j) => j.id !== id));
@@ -135,6 +170,8 @@ export function useRecruiterJobs() {
     create: handleCreate,
     update: handleUpdate,
     duplicate: handleDuplicate,
+    publish: handlePublish,
+    unpublish: handleUnpublish,
     close: handleClose,
     deleteJob: handleDelete,
     refetch: fetchJobs,
