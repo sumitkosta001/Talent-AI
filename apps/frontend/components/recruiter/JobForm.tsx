@@ -17,8 +17,17 @@ export default function JobForm({ initialJob, onSubmit, onPreview, isEdit }: Job
   const [department, setDepartment] = useState(initialJob?.department || 'Engineering');
   const [employmentType, setEmploymentType] = useState<any>(initialJob?.employmentType || 'Full-time');
   const [workMode, setWorkMode] = useState<any>(initialJob?.workMode || 'Remote');
-  const [experience, setExperience] = useState(initialJob?.experience || '');
-  const [salary, setSalary] = useState(initialJob?.salary || '');
+  const [expMonthsInput, setExpMonthsInput] = useState<string>(
+    initialJob && (initialJob as any).required_experience_months !== undefined
+      ? String((initialJob as any).required_experience_months)
+      : '24'
+  );
+  const [salaryMin, setSalaryMin] = useState<string | number>(
+    initialJob && (initialJob as any).salary_min !== undefined ? (initialJob as any).salary_min : 800000
+  );
+  const [salaryMax, setSalaryMax] = useState<string | number>(
+    initialJob && (initialJob as any).salary_max !== undefined ? (initialJob as any).salary_max : 1400000
+  );
   const [location, setLocation] = useState(initialJob?.location || '');
   const [openings, setOpenings] = useState(initialJob?.openings || 1);
   const [deadline, setDeadline] = useState(initialJob?.deadline || '');
@@ -27,30 +36,56 @@ export default function JobForm({ initialJob, onSubmit, onPreview, isEdit }: Job
   const [status, setStatus] = useState<any>(initialJob?.status || 'Published');
 
   const [skillsStr, setSkillsStr] = useState(initialJob?.skills?.join(', ') || '');
+  const [preferredSkillsStr, setPreferredSkillsStr] = useState(initialJob?.preferredSkills?.join(', ') || initialJob?.requirements?.join(', ') || '');
   const [responsibilitiesStr, setResponsibilitiesStr] = useState(initialJob?.responsibilities?.join('\n') || '');
   const [requirementsStr, setRequirementsStr] = useState(initialJob?.requirements?.join('\n') || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role || !experience || !salary || !location || !deadline) {
-      alert('Please fill out all required fields');
+    if (!role.trim() || !location.trim() || !description.trim()) {
+      alert('Please fill out all required fields: Job Title, Location, and Description.');
       return;
     }
 
-    const payload: Partial<RecruiterJob> = {
-      role,
-      department,
+    const minSal = salaryMin !== '' ? Number(salaryMin) : 0;
+    const maxSal = salaryMax !== '' ? Number(salaryMax) : minSal;
+
+    if (minSal < 0 || maxSal < 0) {
+      alert('Salary amounts cannot be negative.');
+      return;
+    }
+
+    if (minSal > maxSal) {
+      alert('Minimum salary cannot exceed maximum salary.');
+      return;
+    }
+
+    const expMonths = Math.max(0, parseInt(expMonthsInput || '0', 10) || 0);
+
+    const skillsArr = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
+    if (skillsArr.length === 0) {
+      alert('Please specify at least one required skill.');
+      return;
+    }
+
+    const payload: any = {
+      role: role.trim(),
+      department: department.trim() || 'Engineering',
       employmentType,
       workMode,
-      experience,
-      salary,
-      location,
-      openings,
-      deadline,
-      hiringManager,
-      description,
+      experience: `${Math.floor(expMonths / 12)}+ years`,
+      salary: minSal && maxSal ? `₹${(minSal / 100000).toFixed(1)}L – ₹${(maxSal / 100000).toFixed(1)}L` : 'Salary not specified',
+      salary_min: minSal,
+      salary_max: maxSal,
+      required_experience_months: expMonths,
+      location: location.trim(),
+      openings: openings || 1,
+      deadline: deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hiringManager: hiringManager.trim() || 'Hiring Lead',
+      description: description.trim(),
       status,
-      skills: skillsStr.split(',').map(s => s.trim()).filter(Boolean),
+      skills: skillsArr,
+      preferredSkills: preferredSkillsStr.split(',').map(s => s.trim()).filter(Boolean),
       responsibilities: responsibilitiesStr.split('\n').map(r => r.trim()).filter(Boolean),
       requirements: requirementsStr.split('\n').map(r => r.trim()).filter(Boolean),
     };
@@ -124,27 +159,41 @@ export default function JobForm({ initialJob, onSubmit, onPreview, isEdit }: Job
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#475569] mb-1.5">Experience Range *</label>
+            <label className="block text-xs font-bold text-[#475569] mb-1.5">Required Experience (Months) *</label>
             <input
               required
-              type="text"
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              placeholder="e.g. 3 - 6 years"
+              type="number"
+              min="0"
+              value={expMonthsInput}
+              onChange={(e) => setExpMonthsInput(e.target.value)}
+              placeholder="e.g. 24 for 2 years"
               className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#475569] mb-1.5">Salary Range *</label>
-            <input
-              required
-              type="text"
-              value={salary}
-              onChange={(e) => setSalary(e.target.value)}
-              placeholder="e.g. $140K - $180K"
-              className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white"
-            />
+            <label className="block text-xs font-bold text-[#475569] mb-1.5">Salary Range (₹ / Year) *</label>
+            <div className="flex gap-2 items-center">
+              <input
+                required
+                type="number"
+                min="0"
+                value={salaryMin}
+                onChange={(e) => setSalaryMin(e.target.value)}
+                placeholder="Min (e.g. 800000)"
+                className="w-1/2 px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white"
+              />
+              <span className="text-slate-400 font-bold">–</span>
+              <input
+                required
+                type="number"
+                min="0"
+                value={salaryMax}
+                onChange={(e) => setSalaryMax(e.target.value)}
+                placeholder="Max (e.g. 1400000)"
+                className="w-1/2 px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white"
+              />
+            </div>
           </div>
 
           <div>

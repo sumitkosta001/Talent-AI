@@ -18,3 +18,12 @@ class JobClosedError(TalentAIException):
     def __init__(self, message: str = "This job posting is closed for applications.") -> None:
         """Initialize job closed error with 400 status."""
         super().__init__(message=message, status_code=400)
+
+
+class InvalidJobStatusTransitionError(TalentAIException):
+    """Raised when an invalid job status transition is requested."""
+
+    def __init__(self, message: str = "Invalid job status transition requested.") -> None:
+        """Initialize invalid job status transition error with 400 status."""
+        super().__init__(message=message, status_code=400)
+

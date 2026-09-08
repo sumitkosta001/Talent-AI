@@ -48,8 +48,55 @@ export interface JobFilter {
   jobType: string;
   remoteStatus: string;
   salaryMin: number;
+  salaryMax?: number;
   skills: string[];
-  sortBy: 'newest' | 'oldest' | 'highest-salary' | 'best-match';
+  sortBy: 'newest' | 'oldest' | 'highest-salary' | 'lowest-salary' | 'best-match';
+  page?: number;
+  size?: number;
+}
+
+export interface JobSearchParams {
+  q?: string;
+  location?: string;
+  skills?: string;
+  experience_months?: number;
+  salary_min?: number;
+  salary_max?: number;
+  work_mode?: 'REMOTE' | 'HYBRID' | 'ONSITE';
+  page?: number;
+  size?: number;
+  sort_by?: string;
+  sort_order?: string;
+}
+
+export interface JobApiItem {
+  id: string;
+  company_id: string;
+  company_name?: string;
+  title: string;
+  description: string;
+  department?: string;
+  location?: string;
+  work_mode?: 'REMOTE' | 'HYBRID' | 'ONSITE';
+  employment_type?: string;
+  required_experience_months?: number;
+  required_skills?: string[];
+  preferred_skills?: string[];
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+  published_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface JobPaginatedResponse {
+  items: JobApiItem[];
+  total: number;
+  page: number;
+  size: number;
+  total_pages: number;
 }
 
 export type JobStatus = 'Draft' | 'Published' | 'Closed';

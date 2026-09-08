@@ -8,11 +8,13 @@ import { Eye, Edit2, Copy, ToggleLeft, Trash2 } from 'lucide-react';
 interface JobCardProps {
   job: RecruiterJob;
   onDuplicate: (id: string) => void;
+  onPublish: (id: string) => void;
+  onUnpublish: (id: string) => void;
   onClose: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export default function JobCard({ job, onDuplicate, onClose, onDelete }: JobCardProps) {
+export default function JobCard({ job, onDuplicate, onPublish, onUnpublish, onClose, onDelete }: JobCardProps) {
   const getStatusStyle = (s: string) => {
     switch (s) {
       case 'Published':
@@ -80,15 +82,36 @@ export default function JobCard({ job, onDuplicate, onClose, onDelete }: JobCard
           >
             <Copy size={13} />
           </button>
-          {job.status === 'Published' && (
+
+          {job.status === 'Draft' && (
             <button
-              onClick={() => onClose(job.id)}
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-              title="Close job listing"
+              onClick={() => onPublish(job.id)}
+              className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+              title="Publish job"
             >
-              <ToggleLeft size={13} />
+              Publish
             </button>
           )}
+
+          {job.status === 'Published' && (
+            <>
+              <button
+                onClick={() => onUnpublish(job.id)}
+                className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                title="Unpublish to draft"
+              >
+                Unpublish
+              </button>
+              <button
+                onClick={() => onClose(job.id)}
+                className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded text-[10px] font-bold hover:bg-red-100 transition-colors cursor-pointer"
+                title="Close job"
+              >
+                Close
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => onDelete(job.id)}
             className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"

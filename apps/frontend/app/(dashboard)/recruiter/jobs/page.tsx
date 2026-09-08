@@ -22,6 +22,8 @@ export default function RecruiterJobsListPage() {
     sortBy,
     setSortBy,
     duplicate,
+    publish,
+    unpublish,
     close,
     deleteJob,
   } = useRecruiterJobs();
@@ -149,6 +151,8 @@ export default function RecruiterJobsListPage() {
         <JobsTable
           jobs={jobs}
           onDuplicate={duplicate}
+          onPublish={publish}
+          onUnpublish={unpublish}
           onClose={close}
           onDelete={deleteJob}
         />
@@ -159,6 +163,8 @@ export default function RecruiterJobsListPage() {
               key={job.id}
               job={job}
               onDuplicate={duplicate}
+              onPublish={publish}
+              onUnpublish={unpublish}
               onClose={close}
               onDelete={deleteJob}
             />

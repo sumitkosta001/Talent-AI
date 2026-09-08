@@ -20,29 +20,56 @@ export class RecruiterApplicantService {
   }
 
   static async getApplicants(): Promise<Applicant[]> {
+    try {
+      const res = await fetch('/api/v1/applications');
+      if (res.ok) {
+        return res.json();
+      }
+    } catch (e) {
+      console.warn('Backend GET /api/v1/applications unavailable, using fallback:', e);
+    }
+
     if (DEV_MODE) {
       await mockDelay(300);
       return this.getLocalApplicants();
     }
 
-    const res = await fetch('/api/recruiter/applicants');
-    if (!res.ok) throw new Error('Failed to retrieve applicants');
-    return res.json();
+    return [];
   }
 
   static async getApplicantById(id: string): Promise<Applicant | null> {
+    try {
+      const res = await fetch(`/api/v1/applications/${id}`);
+      if (res.ok) {
+        return res.json();
+      }
+    } catch (e) {
+      console.warn(`Backend GET /api/v1/applications/${id} unavailable, using fallback:`, e);
+    }
+
     if (DEV_MODE) {
       await mockDelay(200);
       const items = this.getLocalApplicants();
       return items.find(a => a.id === id) || null;
     }
 
-    const res = await fetch(`/api/recruiter/applicants/${id}`);
-    if (!res.ok) throw new Error('Failed to retrieve applicant detail');
-    return res.json();
+    return null;
   }
 
   static async updateStatus(id: string, status: ApplicantStatus): Promise<Applicant> {
+    try {
+      const res = await fetch(`/api/v1/applications/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch (e) {
+      console.warn(`Backend PATCH /api/v1/applications/${id}/status unavailable:`, e);
+    }
+
     if (DEV_MODE) {
       await mockDelay(300);
       const items = this.getLocalApplicants();
@@ -65,16 +92,23 @@ export class RecruiterApplicantService {
       return app;
     }
 
-    const res = await fetch(`/api/recruiter/applicants/${id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) throw new Error('Failed to update status');
-    return res.json();
+    throw new Error('Applications feature is not yet available in the backend.');
   }
 
   static async addNotes(id: string, notes: string): Promise<Applicant> {
+    try {
+      const res = await fetch(`/api/v1/applications/${id}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch (e) {
+      console.warn(`Backend PATCH /api/v1/applications/${id}/notes unavailable:`, e);
+    }
+
     if (DEV_MODE) {
       await mockDelay(200);
       const items = this.getLocalApplicants();
@@ -86,12 +120,6 @@ export class RecruiterApplicantService {
       return items[idx];
     }
 
-    const res = await fetch(`/api/recruiter/applicants/${id}/notes`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes }),
-    });
-    if (!res.ok) throw new Error('Failed to save recruiter notes');
-    return res.json();
+    throw new Error('Applications feature is not yet available in the backend.');
   }
 }
