@@ -30,12 +30,20 @@ export default function CandidateJobsPage() {
     totalPages,
     loading: jobsLoading,
     error: jobsError,
+  const { data: recData, loading: recLoading, error: recError } = useJobRecommendations(resumeId);
+
+  const {
+    jobs,
+    loading: jobsLoading,
     filters,
     updateFilter,
     resetFilters,
     refetch,
   } = useJobs();
 
+  const loading = jobsLoading || recLoading;
+
+  // Use real backend Day 33 job recommendations if available, otherwise filter jobs
   const realRecs = recData?.recommendations || [];
   const recommendations = realRecs.length > 0
     ? realRecs.map((rec) => {
@@ -47,6 +55,7 @@ export default function CandidateJobsPage() {
           role: rec.title || found?.role || 'Job Role',
           title: rec.title || found?.title || 'Job Role',
           salary: found?.salary || '₹8L – ₹15L',
+          salary: found?.salary || '$120K–$160K',
           match: Math.round(rec.recommendation_score <= 1 ? rec.recommendation_score * 100 : rec.recommendation_score),
           location: found?.location || 'Remote',
           logo: found?.logo || 'J',
@@ -62,6 +71,9 @@ export default function CandidateJobsPage() {
           date: 'Recent',
           type: found?.type || 'Full-time',
           remoteStatus: found?.remoteStatus || 'Remote',
+          deadline: 'Open',
+          applicantsCount: found?.applicantsCount || 10,
+          isFeatured: true,
           category: found?.category || 'Engineering',
         };
       })
