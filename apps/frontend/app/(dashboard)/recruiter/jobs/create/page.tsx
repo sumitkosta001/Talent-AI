@@ -15,8 +15,8 @@ export default function RecruiterJobCreatePage() {
         alert('Job posted successfully!');
         router.push('/recruiter/jobs');
       }
-    } catch {
-      alert('Failed to publish job. Please try again.');
+    } catch (err: any) {
+      alert(err?.message || 'Failed to publish job. Please try again.');
     }
   };
 

@@ -22,7 +22,7 @@ export default function CandidateJobsPage() {
   
   const { currentResume } = useResume();
   const resumeId = currentResume?.id || null;
-  const { data: recData, loading: recLoading } = useJobRecommendations(resumeId);
+  const { data: recData, loading: recLoading, error: recError } = useJobRecommendations(resumeId);
 
   const {
     jobs,
@@ -30,11 +30,6 @@ export default function CandidateJobsPage() {
     totalPages,
     loading: jobsLoading,
     error: jobsError,
-  const { data: recData, loading: recLoading, error: recError } = useJobRecommendations(resumeId);
-
-  const {
-    jobs,
-    loading: jobsLoading,
     filters,
     updateFilter,
     resetFilters,
@@ -54,7 +49,6 @@ export default function CandidateJobsPage() {
           company: rec.company || found?.company || 'Company',
           role: rec.title || found?.role || 'Job Role',
           title: rec.title || found?.title || 'Job Role',
-          salary: found?.salary || '₹8L – ₹15L',
           salary: found?.salary || '$120K–$160K',
           match: Math.round(rec.recommendation_score <= 1 ? rec.recommendation_score * 100 : rec.recommendation_score),
           location: found?.location || 'Remote',

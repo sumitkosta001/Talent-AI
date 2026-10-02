@@ -198,26 +198,43 @@ export const authService = {
     if (!res.ok) return null;
 
     const body = await res.json();
-    const userSession: UserSessionData = {
-      id: body.user.id,
-      email: body.user.email,
-      role: body.user.role,
-      name: body.user.full_name,
-      accountState: body.user.is_verified ? 'Active' : 'EmailNotVerified',
-      twoFactorEnabled: false,
-      lastLogin: new Date().toISOString(),
-      lastDevice: 'Chrome (Windows)',
-      trustedDevices: [],
-    };
-
-    const token = body.tokens.access_token;
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('talentai_auth_user', JSON.stringify(userSession));
-      localStorage.setItem('talentai_auth_token', token);
-      localStorage.setItem('talentai_auth_refresh_token', body.tokens.refresh_token);
+    let userSession: UserSessionData | null = null;
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('talentai_auth_user') : null;
+    if (storedUser) {
+      try {
+        userSession = JSON.parse(storedUser);
+      } catch {}
     }
 
-    return { user: userSession, token };
+    if (body.user) {
+      userSession = {
+        id: body.user.id,
+        email: body.user.email,
+        role: body.user.role,
+        name: body.user.full_name,
+        accountState: body.user.is_verified ? 'Active' : 'EmailNotVerified',
+        twoFactorEnabled: false,
+        lastLogin: new Date().toISOString(),
+        lastDevice: 'Chrome (Windows)',
+        trustedDevices: [],
+      };
+    }
+
+    const token = body.tokens?.access_token || body.access_token;
+    const nextRefreshToken = body.tokens?.refresh_token || body.refresh_token;
+
+    if (typeof window !== 'undefined') {
+      if (userSession) {
+        localStorage.setItem('talentai_auth_user', JSON.stringify(userSession));
+      }
+      if (token) {
+        localStorage.setItem('talentai_auth_token', token);
+      }
+      if (nextRefreshToken) {
+        localStorage.setItem('talentai_auth_refresh_token', nextRefreshToken);
+      }
+    }
+
+    return userSession ? { user: userSession, token } : null;
   },
 };
