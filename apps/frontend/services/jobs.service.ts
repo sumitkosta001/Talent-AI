@@ -3,6 +3,7 @@ import { mockDelay } from '@/lib/mockDelay';
 import { Job, JobFilter, JobPaginatedResponse, JobSearchParams, JobStatus, RecruiterJob } from '@/types/job';
 import { MOCK_JOBS } from '@/mock/jobs';
 import { MOCK_RECRUITER_JOBS } from '@/mock/recruiterJobs';
+import { apiClient } from '@/lib/apiClient';
 
 export class JobsService {
   static async searchJobs(params: JobSearchParams): Promise<JobPaginatedResponse> {
@@ -25,7 +26,7 @@ export class JobsService {
     if (params.sort_by) query.append('sort_by', params.sort_by);
     if (params.sort_order) query.append('sort_order', params.sort_order);
 
-    const res = await fetch(`/api/v1/jobs?${query.toString()}`);
+    const res = await apiClient.get(`/api/v1/jobs?${query.toString()}`);
     if (!res.ok) {
       throw new Error(`Failed to search jobs: ${res.statusText}`);
     }
@@ -182,7 +183,7 @@ export class JobsService {
     }
 
     try {
-      const res = await fetch('/api/jobs');
+      const res = await apiClient.get('/api/jobs');
       if (res.ok) {
         return await res.json();
       }
@@ -199,7 +200,7 @@ export class JobsService {
       return match || null;
     }
 
-    const res = await fetch(`/api/v1/jobs/${id}`);
+    const res = await apiClient.get(`/api/v1/jobs/${id}`);
     if (!res.ok) throw new Error('Failed to fetch job detail');
     const data = await res.json();
     return this.mapApiItemToJob(data);
@@ -274,7 +275,7 @@ export class RecruiterJobsService {
 
   static async getJobs(): Promise<RecruiterJob[]> {
     try {
-      const res = await fetch('/api/v1/jobs/company/me');
+      const res = await apiClient.get('/api/v1/jobs/company/me');
       if (res.ok) {
         const data = await res.json();
         if (data.items && Array.isArray(data.items)) {
@@ -294,7 +295,7 @@ export class RecruiterJobsService {
 
   static async getJobById(id: string): Promise<RecruiterJob | null> {
     try {
-      const res = await fetch(`/api/v1/jobs/${id}`);
+      const res = await apiClient.get(`/api/v1/jobs/${id}`);
       if (res.ok) {
         const data = await res.json();
         return this.mapApiItemToRecruiterJob(data);
@@ -332,17 +333,13 @@ export class RecruiterJobsService {
         required_keywords: job.responsibilities || [],
       };
 
-      const res = await fetch('/api/v1/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await apiClient.post('/api/v1/jobs', payload);
 
       if (res.ok) {
         const createdItem = await res.json();
         if (job.status === 'Published') {
           try {
-            const pubRes = await fetch(`/api/v1/jobs/${createdItem.id}/publish`, { method: 'POST' });
+            const pubRes = await apiClient.post(`/api/v1/jobs/${createdItem.id}/publish`);
             if (pubRes.ok) {
               const publishedItem = await pubRes.json();
               return this.mapApiItemToRecruiterJob(publishedItem);
@@ -352,9 +349,14 @@ export class RecruiterJobsService {
           }
         }
         return this.mapApiItemToRecruiterJob(createdItem);
+      } else {
+        const errBody = await res.json().catch(() => null);
+        const errorMsg = errBody?.error?.message || errBody?.detail || `Job creation failed (HTTP ${res.status})`;
+        throw new Error(errorMsg);
       }
-    } catch (e) {
-      console.warn('Backend POST /api/v1/jobs error, falling back:', e);
+    } catch (e: any) {
+      console.warn('Backend POST /api/v1/jobs error:', e);
+      throw e;
     }
 
     if (DEV_MODE) {
@@ -415,11 +417,7 @@ export class RecruiterJobsService {
       if (updates.benefits) payload.education_requirements = updates.benefits;
       if (updates.responsibilities) payload.required_keywords = updates.responsibilities;
 
-      const res = await fetch(`/api/v1/jobs/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await apiClient.patch(`/api/v1/jobs/${id}`, payload);
 
       if (res.ok) {
         const updatedItem = await res.json();
@@ -446,7 +444,7 @@ export class RecruiterJobsService {
 
   static async publishJob(id: string): Promise<RecruiterJob> {
     try {
-      const res = await fetch(`/api/v1/jobs/${id}/publish`, { method: 'POST' });
+      const res = await apiClient.post(`/api/v1/jobs/${id}/publish`);
       if (res.ok) {
         const data = await res.json();
         return this.mapApiItemToRecruiterJob(data);
@@ -463,7 +461,7 @@ export class RecruiterJobsService {
 
   static async unpublishJob(id: string): Promise<RecruiterJob> {
     try {
-      const res = await fetch(`/api/v1/jobs/${id}/unpublish`, { method: 'POST' });
+      const res = await apiClient.post(`/api/v1/jobs/${id}/unpublish`);
       if (res.ok) {
         const data = await res.json();
         return this.mapApiItemToRecruiterJob(data);
@@ -480,7 +478,7 @@ export class RecruiterJobsService {
 
   static async closeJob(id: string): Promise<RecruiterJob> {
     try {
-      const res = await fetch(`/api/v1/jobs/${id}/close`, { method: 'POST' });
+      const res = await apiClient.post(`/api/v1/jobs/${id}/close`);
       if (res.ok) {
         const data = await res.json();
         return this.mapApiItemToRecruiterJob(data);
@@ -497,7 +495,7 @@ export class RecruiterJobsService {
 
   static async deleteJob(id: string): Promise<boolean> {
     try {
-      const res = await fetch(`/api/v1/jobs/${id}`, { method: 'DELETE' });
+      const res = await apiClient.delete(`/api/v1/jobs/${id}`);
       if (res.ok || res.status === 204) {
         return true;
       }

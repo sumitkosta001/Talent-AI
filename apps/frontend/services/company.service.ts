@@ -3,6 +3,7 @@ import { mockDelay } from '@/lib/mockDelay';
 import { Company, CompanyDetail } from '@/types/company';
 import { MOCK_COMPANIES } from '@/mock/companies';
 import { MOCK_COMPANY } from '@/mock/company';
+import { apiClient } from '@/lib/apiClient';
 
 export class CompanyService {
   static async getCompanies(): Promise<Company[]> {
@@ -11,7 +12,7 @@ export class CompanyService {
       return MOCK_COMPANIES;
     }
 
-    const res = await fetch('/api/companies');
+    const res = await apiClient.get('/api/v1/companies');
     if (!res.ok) throw new Error('Failed to fetch companies');
     return res.json();
   }
@@ -23,7 +24,7 @@ export class CompanyService {
       return match || null;
     }
 
-    const res = await fetch(`/api/companies/${id}`);
+    const res = await apiClient.get(`/api/v1/companies/${id}`);
     if (!res.ok) throw new Error('Failed to fetch company profile');
     return res.json();
   }
@@ -37,7 +38,11 @@ export class RecruiterCompanyService {
       localStorage.setItem('talentai_recruiter_company', JSON.stringify(MOCK_COMPANY));
       return MOCK_COMPANY;
     }
-    return JSON.parse(stored);
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return MOCK_COMPANY;
+    }
   }
 
   static saveLocalCompany(company: CompanyDetail) {
@@ -56,10 +61,10 @@ export class RecruiterCompanyService {
       industry: item.industry || 'Technology',
       website: item.website || '',
       location: item.location || 'Remote',
-      employees: '50-200',
-      founded: '2022',
-      culture: ['Innovation', 'Inclusivity', 'Autonomy'],
-      benefits: ['Health Insurance', 'Remote Work', 'Learning Budget'],
+      employees: item.employees || '50-200',
+      founded: item.founded || '2024',
+      culture: item.culture || ['Innovation', 'Inclusivity', 'Autonomy'],
+      benefits: item.benefits || ['Health Insurance', 'Remote Work', 'Learning Budget'],
       hiringTeam: [],
       socials: {},
     };
@@ -67,55 +72,61 @@ export class RecruiterCompanyService {
 
   static async getCompany(): Promise<CompanyDetail> {
     try {
-      const res = await fetch('/api/v1/companies/me');
+      const res = await apiClient.get('/api/v1/companies/me');
       if (res.ok) {
         const data = await res.json();
-        return this.mapApiItemToCompanyDetail(data);
+        const mapped = this.mapApiItemToCompanyDetail(data);
+        this.saveLocalCompany(mapped);
+        return mapped;
       }
     } catch (e) {
-      console.warn('Backend GET /api/v1/companies/me unavailable:', e);
-    }
-
-    if (DEV_MODE) {
-      await mockDelay(200);
-      return this.getLocalCompany();
+      console.warn('Backend GET /api/v1/companies/me error:', e);
     }
 
     return this.getLocalCompany();
   }
 
   static async updateCompany(company: CompanyDetail): Promise<CompanyDetail> {
+    const payload = {
+      name: company.name.trim(),
+      description: company.about?.trim() || undefined,
+      website: company.website?.trim() || undefined,
+      logo_url: company.logo?.trim() || undefined,
+      location: company.location?.trim() || undefined,
+      industry: company.industry?.trim() || undefined,
+    };
+
     try {
-      const payload = {
-        name: company.name,
-        description: company.about,
-        website: company.website,
-        logo_url: company.logo,
-        location: company.location,
-        industry: company.industry,
-      };
-
-      const res = await fetch('/api/v1/companies/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        return this.mapApiItemToCompanyDetail(data);
+      // First attempt to update existing company
+      const patchRes = await apiClient.patch('/api/v1/companies/me', payload);
+      if (patchRes.ok) {
+        const data = await patchRes.json();
+        const mapped = this.mapApiItemToCompanyDetail(data);
+        this.saveLocalCompany(mapped);
+        return mapped;
       }
-    } catch (e) {
-      console.warn('Backend PATCH /api/v1/companies/me error:', e);
-    }
 
-    if (DEV_MODE) {
-      await mockDelay(300);
-      this.saveLocalCompany(company);
-      return company;
+      // If 404, user account is not associated with a company yet -> create it
+      if (patchRes.status === 404) {
+        const createRes = await apiClient.post('/api/v1/companies', payload);
+        if (createRes.ok) {
+          const data = await createRes.json();
+          const mapped = this.mapApiItemToCompanyDetail(data);
+          this.saveLocalCompany(mapped);
+          return mapped;
+        } else {
+          const errData = await createRes.json().catch(() => null);
+          const msg = errData?.error?.message || errData?.detail || 'Failed to create company';
+          throw new Error(msg);
+        }
+      } else {
+        const errData = await patchRes.json().catch(() => null);
+        const msg = errData?.error?.message || errData?.detail || 'Failed to update company';
+        throw new Error(msg);
+      }
+    } catch (e: any) {
+      console.warn('Backend company update error:', e);
+      throw e;
     }
-
-    this.saveLocalCompany(company);
-    return company;
   }
 }

@@ -2,37 +2,57 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCompany } from '@/hooks/useCompany';
-import { Loader2, Save, Building, MapPin, Globe, Users, Calendar } from 'lucide-react';
+import { Loader2, Save, Building, MapPin, Globe, Users, Briefcase } from 'lucide-react';
 
 export default function RecruiterCompanyPage() {
   const { company, loading, error, updateCompany } = useCompany();
 
+  const [name, setName] = useState('');
+  const [industry, setIndustry] = useState('');
   const [about, setAbout] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
   const [employees, setEmployees] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (company) {
-      setAbout(company.about);
-      setLocation(company.location);
-      setWebsite(company.website);
-      setEmployees(company.employees);
+      setName(company.name || '');
+      setIndustry(company.industry || '');
+      setAbout(company.about || '');
+      setLocation(company.location || '');
+      setWebsite(company.website || '');
+      setEmployees(company.employees || '');
     }
   }, [company]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company) return;
-    const success = await updateCompany({
-      ...company,
-      about,
-      location,
-      website,
-      employees,
-    });
-    if (success) {
-      alert('Company profile saved successfully!');
+    if (!name.trim()) {
+      alert('Company Name is required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const success = await updateCompany({
+        ...company,
+        name: name.trim(),
+        industry: industry.trim(),
+        about: about.trim(),
+        location: location.trim(),
+        website: website.trim(),
+        employees: employees.trim(),
+      });
+      if (success) {
+        alert('Company profile saved successfully!');
+      } else {
+        alert('Failed to save company profile.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Failed to save company profile.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -63,12 +83,12 @@ export default function RecruiterCompanyPage() {
 
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex gap-4">
-          <div className={`w-14 h-14 rounded-2xl ${company.logoColor} flex items-center justify-center text-white font-black text-xl shadow-sm flex-shrink-0`}>
-            {company.logo}
+          <div className={`w-14 h-14 rounded-2xl ${company.logoColor || 'bg-blue-600'} flex items-center justify-center text-white font-black text-xl shadow-sm flex-shrink-0`}>
+            {name ? name.charAt(0).toUpperCase() : 'C'}
           </div>
           <div>
-            <h2 className="text-lg font-bold">{company.name}</h2>
-            <p className="text-xs text-[#64748B] mt-0.5">Founded in {company.founded} · {company.industry}</p>
+            <h2 className="text-lg font-bold">{name || company.name}</h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Founded in {company.founded} · {industry || company.industry}</p>
           </div>
         </div>
       </div>
@@ -80,12 +100,40 @@ export default function RecruiterCompanyPage() {
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#475569] mb-1.5 flex items-center gap-1">
+                <Building size={12} /> Company Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Company Name"
+                className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#475569] mb-1.5 flex items-center gap-1">
+                <Briefcase size={12} /> Industry Sector
+              </label>
+              <input
+                type="text"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="Software and Technology"
+                className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#475569] mb-1.5 flex items-center gap-1">
                 <MapPin size={12} /> Office Location
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                placeholder="San Francisco, CA (Remote)"
                 className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white"
               />
             </div>
@@ -98,6 +146,7 @@ export default function RecruiterCompanyPage() {
                 type="text"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://example.com"
                 className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white"
               />
             </div>
@@ -110,6 +159,7 @@ export default function RecruiterCompanyPage() {
                 type="text"
                 value={employees}
                 onChange={(e) => setEmployees(e.target.value)}
+                placeholder="50 - 200 Employees"
                 className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white"
               />
             </div>
@@ -121,6 +171,7 @@ export default function RecruiterCompanyPage() {
               rows={4}
               value={about}
               onChange={(e) => setAbout(e.target.value)}
+              placeholder="Describe your company mission and domain..."
               className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#0F172A] focus:outline-none focus:border-blue-500 bg-white resize-none"
             />
           </div>
@@ -160,10 +211,11 @@ export default function RecruiterCompanyPage() {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="inline-flex items-center gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
           >
-            <Save size={14} />
-            Save Profile
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {saving ? 'Saving...' : 'Save Profile'}
           </button>
         </div>
       </form>
