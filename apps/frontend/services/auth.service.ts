@@ -74,6 +74,7 @@ export const authService = {
         confirm_password: data.pass,
         first_name,
         last_name,
+        role: data.role || 'candidate',
       }),
     });
 

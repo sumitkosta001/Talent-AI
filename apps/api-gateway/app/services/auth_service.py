@@ -135,13 +135,15 @@ class AuthService:
             )
 
         hashed_pw = hash_password(request.password)
+        allowed_reg_roles = {UserRole.CANDIDATE, UserRole.RECRUITER, UserRole.HIRING_MANAGER}
+        assigned_role = request.role if (request.role and request.role in allowed_reg_roles) else UserRole.CANDIDATE
 
         new_user = User(
             email=request.email,
             password_hash=hashed_pw,
             first_name=request.first_name,
             last_name=request.last_name,
-            role=UserRole.CANDIDATE,
+            role=assigned_role,
             provider=AuthProvider.LOCAL,
             is_active=True,
             is_verified=False,

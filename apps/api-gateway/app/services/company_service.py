@@ -51,9 +51,12 @@ class CompanyService:
 
         created_company = await self.repository.create_company(company)
 
-        # Auto-associate recruiter with company if creator is a recruiter/hiring manager with no company assigned
-        if creator_user and creator_user.role in (UserRole.RECRUITER, UserRole.HIRING_MANAGER) and not creator_user.company_id:
-            creator_user.company_id = created_company.id
+        # Auto-associate creator with company and establish recruiter affiliation
+        if creator_user:
+            if not creator_user.company_id:
+                creator_user.company_id = created_company.id
+            if creator_user.role == UserRole.CANDIDATE:
+                creator_user.role = UserRole.RECRUITER
             await self.user_repository.update_user(creator_user)
 
         return created_company

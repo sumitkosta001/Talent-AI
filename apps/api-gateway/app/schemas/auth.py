@@ -270,6 +270,33 @@ class RegisterRequest(BaseModel):
         description="User's last name (2-50 characters).",
         examples=["Doe"],
     )
+    role: Optional[UserRole] = Field(
+        default=UserRole.CANDIDATE,
+        description="Role for the newly registered user (candidate, recruiter, hiring_manager).",
+        examples=[UserRole.CANDIDATE, UserRole.RECRUITER],
+    )
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_role(cls, v: Any) -> UserRole:
+        """Validate and normalize user registration role."""
+        if v is None:
+            return UserRole.CANDIDATE
+        if isinstance(v, UserRole):
+            if v in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+                raise ValueError("Self-registration for administrator roles is prohibited.")
+            return v
+        if isinstance(v, str):
+            cleaned = v.strip().lower()
+            if cleaned in ("admin", "super_admin", "userrole.admin", "userrole.super_admin"):
+                raise ValueError("Self-registration for administrator roles is prohibited.")
+            if cleaned in ("recruiter", "userrole.recruiter"):
+                return UserRole.RECRUITER
+            if cleaned in ("hiring_manager", "userrole.hiring_manager"):
+                return UserRole.HIRING_MANAGER
+            if cleaned in ("candidate", "userrole.candidate"):
+                return UserRole.CANDIDATE
+        return UserRole.CANDIDATE
 
     @field_validator("email", mode="before")
     @classmethod

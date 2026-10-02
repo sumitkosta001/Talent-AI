@@ -155,7 +155,12 @@ async def get_current_candidate(
     Raises:
         PermissionDeniedError: 403 Forbidden if user is not a candidate or superuser.
     """
-    if current_user.is_superuser or current_user.role == UserRole.CANDIDATE:
+    if current_user.is_superuser:
+        return current_user
+
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    allowed_roles = {UserRole.CANDIDATE, "candidate"}
+    if current_user.role in allowed_roles or role_val.lower() in {"candidate", "userrole.candidate"}:
         return current_user
 
     logger.warning("Candidate role access denied for user: %s (role: %s)", current_user.email, current_user.role)
@@ -178,8 +183,16 @@ async def get_current_company(
     Raises:
         PermissionDeniedError: 403 Forbidden if user is not a recruiter/hiring manager or superuser.
     """
+    if current_user.is_superuser:
+        return current_user
+
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     allowed_roles = {UserRole.RECRUITER, UserRole.HIRING_MANAGER, "company", "recruiter", "hiring_manager"}
-    if current_user.is_superuser or current_user.role in allowed_roles or str(current_user.role).lower() in allowed_roles:
+    if (
+        current_user.role in allowed_roles
+        or role_val in allowed_roles
+        or role_val.lower() in {"company", "recruiter", "hiring_manager", "userrole.recruiter", "userrole.hiring_manager"}
+    ):
         return current_user
 
     logger.warning("Company role access denied for user: %s (role: %s)", current_user.email, current_user.role)
@@ -202,8 +215,16 @@ async def get_current_admin(
     Raises:
         PermissionDeniedError: 403 Forbidden if user is not an admin or superuser.
     """
+    if current_user.is_superuser:
+        return current_user
+
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     allowed_roles = {UserRole.ADMIN, UserRole.SUPER_ADMIN, "admin", "super_admin"}
-    if current_user.is_superuser or current_user.role in allowed_roles or str(current_user.role).lower() in allowed_roles:
+    if (
+        current_user.role in allowed_roles
+        or role_val in allowed_roles
+        or role_val.lower() in {"admin", "super_admin", "userrole.admin", "userrole.super_admin"}
+    ):
         return current_user
 
     logger.warning("Admin role access denied for user: %s (role: %s)", current_user.email, current_user.role)

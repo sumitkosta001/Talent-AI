@@ -279,11 +279,16 @@ class EmailService:
                 msg["To"] = email
                 msg.attach(MIMEText(html_content, "html"))
 
-                with smtplib.SMTP(self.mail_server, self.mail_port, timeout=10) as server:
-                    if self.mail_starttls:
-                        server.starttls()
-                    server.login(self.mail_username, self.mail_password)
-                    server.sendmail(self.mail_from, [email], msg.as_string())
+                if self.mail_ssl_tls:
+                    with smtplib.SMTP_SSL(self.mail_server, self.mail_port, timeout=5) as server:
+                        server.login(self.mail_username, self.mail_password)
+                        server.sendmail(self.mail_from, [email], msg.as_string())
+                else:
+                    with smtplib.SMTP(self.mail_server, self.mail_port, timeout=5) as server:
+                        if self.mail_starttls:
+                            server.starttls()
+                        server.login(self.mail_username, self.mail_password)
+                        server.sendmail(self.mail_from, [email], msg.as_string())
 
                 logger.info("Verification email sent via SMTP to %s", email)
                 return True
