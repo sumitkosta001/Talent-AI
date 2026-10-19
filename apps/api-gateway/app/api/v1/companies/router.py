@@ -113,11 +113,11 @@ async def update_company(
     company_id: UUID,
     payload: CompanyUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(get_current_company)],
 ) -> CompanyResponse:
-    """Update company profile details."""
+    """Update company profile details with ownership verification."""
     service = CompanyService(db)
-    company = await service.update_company(company_id, payload, updater_id=current_user.id)
+    company = await service.update_company(company_id, payload, updater_id=current_user.id, requesting_user=current_user)
     return CompanyResponse.model_validate(company)
 
 
@@ -130,11 +130,11 @@ async def update_company(
 async def delete_company(
     company_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(get_current_company)],
 ) -> None:
-    """Soft delete company profile."""
+    """Soft delete company profile with ownership verification."""
     service = CompanyService(db)
-    await service.delete_company(company_id)
+    await service.delete_company(company_id, requesting_user=current_user)
 
 
 @router.get(

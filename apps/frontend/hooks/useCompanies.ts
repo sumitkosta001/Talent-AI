@@ -37,9 +37,10 @@ export function useCompanies() {
       const q = search.toLowerCase();
       result = result.filter(
         c =>
-          c.name.toLowerCase().includes(q) ||
-          c.industry.toLowerCase().includes(q) ||
-          c.about.toLowerCase().includes(q)
+          (c.name && c.name.toLowerCase().includes(q)) ||
+          (c.industry && c.industry.toLowerCase().includes(q)) ||
+          (c.about && c.about.toLowerCase().includes(q)) ||
+          (c.description && c.description.toLowerCase().includes(q))
       );
     }
 
@@ -48,11 +49,11 @@ export function useCompanies() {
     }
 
     if (sortBy === 'rating') {
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     } else if (sortBy === 'jobs') {
-      result.sort((a, b) => b.openPositions - a.openPositions);
+      result.sort((a, b) => (b.openPositions ?? 0) - (a.openPositions ?? 0));
     } else if (sortBy === 'alphabetical') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
     return result;

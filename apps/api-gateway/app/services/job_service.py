@@ -58,7 +58,7 @@ class JobService:
         """Retrieve an active job entity by ID or raise JobNotFoundError."""
         job = await self.repository.get_by_id(job_id)
         if not job:
-            raise JobNotFoundError(job_id)
+            raise JobNotFoundError(str(job_id))
         return job
 
     async def update_job(self, job_id: UUID | str, data: JobUpdate, user: User) -> Job:
@@ -109,6 +109,13 @@ class JobService:
 
         await self.repository.soft_delete_job(job)
 
+        # Remove from FAISS index if present
+        try:
+            from app.services.resume_processing.faiss_index_service import remove_job_index
+            remove_job_index(str(job.id))
+        except Exception:
+            pass
+
     async def publish_job(self, job_id: UUID | str, user: User) -> Job:
         """Transition a DRAFT job posting to PUBLISHED status."""
         job = await self.get_job(job_id)
@@ -126,7 +133,16 @@ class JobService:
         job.published_at = datetime.now(timezone.utc)
         job.updated_by = user.id
 
-        return await self.repository.update_job(job)
+        updated_job = await self.repository.update_job(job)
+
+        # Sync published job to FAISS vector index
+        try:
+            from app.services.resume_processing.faiss_index_service import index_job
+            index_job(str(updated_job.id), updated_job.to_job_requirements())
+        except Exception:
+            pass
+
+        return updated_job
 
     async def unpublish_job(self, job_id: UUID | str, user: User) -> Job:
         """Transition a PUBLISHED job posting back to DRAFT status."""
@@ -144,7 +160,16 @@ class JobService:
         job.status = JobStatus.DRAFT
         job.updated_by = user.id
 
-        return await self.repository.update_job(job)
+        updated_job = await self.repository.update_job(job)
+
+        # Remove from FAISS index if present
+        try:
+            from app.services.resume_processing.faiss_index_service import remove_job_index
+            remove_job_index(str(job.id))
+        except Exception:
+            pass
+
+        return updated_job
 
     async def close_job(self, job_id: UUID | str, user: User) -> Job:
         """Transition a PUBLISHED job posting to CLOSED status."""
@@ -162,7 +187,16 @@ class JobService:
         job.status = JobStatus.CLOSED
         job.updated_by = user.id
 
-        return await self.repository.update_job(job)
+        updated_job = await self.repository.update_job(job)
+
+        # Remove from FAISS index if present
+        try:
+            from app.services.resume_processing.faiss_index_service import remove_job_index
+            remove_job_index(str(job.id))
+        except Exception:
+            pass
+
+        return updated_job
 
     async def search_jobs(
         self,

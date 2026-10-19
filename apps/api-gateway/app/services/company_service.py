@@ -69,10 +69,14 @@ class CompanyService:
         return company
 
     async def update_company(
-        self, company_id: UUID | str, data: CompanyUpdate, updater_id: Optional[UUID] = None
+        self, company_id: UUID | str, data: CompanyUpdate, updater_id: Optional[UUID] = None, requesting_user: Optional[User] = None
     ) -> Company:
-        """Update existing company fields."""
+        """Update existing company fields with ownership verification."""
         company = await self.get_company(company_id)
+
+        # Ownership check: only the company's own recruiter can update it
+        if requesting_user is not None and requesting_user.company_id != company.id:
+            raise PermissionDeniedError("Access denied. You can only update your own company profile.")
 
         if data.name is not None and data.name.strip().lower() != company.name.lower():
             existing = await self.repository.get_by_name(data.name)
@@ -96,9 +100,14 @@ class CompanyService:
 
         return await self.repository.update_company(company)
 
-    async def delete_company(self, company_id: UUID | str) -> None:
-        """Soft delete a company entity by ID."""
+    async def delete_company(self, company_id: UUID | str, requesting_user: Optional[User] = None) -> None:
+        """Soft delete a company entity by ID with ownership verification."""
         company = await self.get_company(company_id)
+
+        # Ownership check: only the company's own recruiter can delete it
+        if requesting_user is not None and requesting_user.company_id != company.id:
+            raise PermissionDeniedError("Access denied. You can only delete your own company profile.")
+
         await self.repository.soft_delete_company(company)
 
     async def list_companies(self, limit: int = 100, offset: int = 0) -> Tuple[List[Company], int]:

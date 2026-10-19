@@ -878,6 +878,7 @@ async def get_job_recommendations_for_my_resume(
     resume_id: UUID,
     current_user: Annotated[User, Depends(get_current_candidate)],
     service: Annotated[ResumeService, Depends(get_resume_service)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     top_k: int = Query(default=10, ge=1, le=50),
     body: Optional[CandidateJobRecommendationRequest] = None,
 ) -> JobRecommendationResponse:
@@ -893,9 +894,21 @@ async def get_job_recommendations_for_my_resume(
         )
 
     structured = StructuredResume.model_validate(resume.structured_data)
-    candidate_jobs = body.jobs if body else None
+    candidate_jobs = body.jobs if (body and body.jobs is not None) else None
+    active_job_ids = None
+
+    if candidate_jobs is None:
+        from app.services.job_service import JobService
+        job_service = JobService(db)
+        active_jobs, _, _ = await job_service.search_jobs(size=100)
+        candidate_jobs = [j.to_job_requirements() for j in active_jobs]
+        active_job_ids = {str(j.id) for j in active_jobs}
+
     try:
         result = recommend_jobs_for_resume(structured, candidate_jobs=candidate_jobs, top_k=top_k)
+        if active_job_ids is not None:
+            result.recommendations = [r for r in result.recommendations if r.job_id in active_job_ids]
+            result.total_results = len(result.recommendations)
         return result
     except ValueError as val_err:
         raise HTTPException(status_code=400, detail=str(val_err))

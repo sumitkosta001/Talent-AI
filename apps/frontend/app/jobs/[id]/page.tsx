@@ -10,8 +10,6 @@ import RelatedJobs from '@/components/jobs/RelatedJobs';
 import RecentJobs, { trackRecentView } from '@/components/jobs/RecentJobs';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { MOCK_JOBS } from '@/mock/jobs';
-
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -21,6 +19,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const [job, setJob] = useState<Job | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
+  const [relatedJobs, setRelatedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,9 +31,28 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         const jobData = await JobsService.getJobById(id);
         if (jobData) {
           setJob(jobData);
-          trackRecentView(id); // track viewed state
-          const compData = await CompanyService.getCompanyById(jobData.companyId);
-          setCompany(compData);
+          trackRecentView(id, jobData);
+          try {
+            const list = await JobsService.getJobs();
+            setRelatedJobs(list || []);
+          } catch {
+            // optional related jobs
+          }
+          if (jobData.companyId) {
+            try {
+              const compData = await CompanyService.getCompanyById(jobData.companyId);
+              if (compData) {
+                setCompany(compData);
+                if (compData.name && (!jobData.company || jobData.company === 'Company')) {
+                  const updatedJob = { ...jobData, company: compData.name };
+                  setJob(updatedJob);
+                  trackRecentView(id, updatedJob);
+                }
+              }
+            } catch {
+              // company details optional
+            }
+          }
         } else {
           setError('Job listing not found');
         }
@@ -81,7 +99,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
         {/* Similar matches and history */}
         <div className="grid md:grid-cols-2 gap-6 mt-6">
-          <RelatedJobs jobs={MOCK_JOBS} currentJobId={job.id} />
+          <RelatedJobs jobs={relatedJobs} currentJobId={job.id} />
           <RecentJobs />
         </div>
 

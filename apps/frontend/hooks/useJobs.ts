@@ -51,12 +51,12 @@ export function useJobs() {
         sort_order = 'asc';
       }
 
-      let work_mode: 'REMOTE' | 'HYBRID' | 'ONSITE' | undefined;
+      let work_mode: 'remote' | 'hybrid' | 'onsite' | undefined;
       if (filters.remoteStatus && filters.remoteStatus !== 'Any') {
-        const u = filters.remoteStatus.toUpperCase();
-        if (u === 'REMOTE' || u === 'HYBRID' || u === 'ONSITE') {
-          work_mode = u as any;
-        }
+        const u = filters.remoteStatus.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        if (u === 'remote') work_mode = 'remote';
+        else if (u === 'hybrid') work_mode = 'hybrid';
+        else if (u === 'onsite') work_mode = 'onsite';
       }
 
       const res = await JobsService.searchJobs({

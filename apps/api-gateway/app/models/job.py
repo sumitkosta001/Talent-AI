@@ -179,6 +179,10 @@ class Job(BaseModel):
         """Convert database Job model instance into Phase 4 ML JobRequirements Pydantic model."""
         from app.services.resume_processing.models import JobRequirements
 
+        company_name = None
+        if "company" in self.__dict__ and self.company:
+            company_name = getattr(self.company, "name", None)
+
         return JobRequirements(
             job_id=str(self.id),
             title=self.title,
@@ -193,10 +197,11 @@ class Job(BaseModel):
             preferred_experience_months=None,
             required_roles=[self.title] if self.title else [],
             preferred_roles=[],
-            required_domains=[],
+            required_domains=[self.department] if self.department else [],
             preferred_domains=[],
             metadata={
                 "company_id": str(self.company_id),
+                "company": company_name,
                 "location": self.location,
                 "work_mode": self.work_mode.value if hasattr(self.work_mode, "value") else str(self.work_mode),
                 "salary_min": self.salary_min,

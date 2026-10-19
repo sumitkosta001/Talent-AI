@@ -1,20 +1,23 @@
 export interface Company {
   id: string;
   name: string;
-  logo: string;
-  logoColor: string;
-  industry: string;
-  employees: string;
-  rating: number;
-  openPositions: number;
-  website: string;
-  about: string;
-  founded: string;
-  headquarters: string;
-  stage: string;
+  description?: string | null;
+  location?: string | null;
+  website?: string | null;
+  logo_url?: string | null;
+  industry?: string | null;
+  logo?: string;
+  logoColor?: string;
+  employees?: string;
+  rating?: number;
+  openPositions?: number;
+  about?: string;
+  founded?: string;
+  headquarters?: string;
+  stage?: string;
   totalRaised?: string;
   valuation?: string;
-  techStack: string[];
+  techStack?: string[];
 }
 
 export interface CompanyDetail {

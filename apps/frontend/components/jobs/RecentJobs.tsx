@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Job } from '@/types/job';
-import { MOCK_JOBS } from '@/mock/jobs';
 import CompactJobCard from './CompactJobCard';
 
 interface RecentJobsProps {
@@ -14,14 +13,16 @@ export default function RecentJobs({ isDashboardLink = false }: RecentJobsProps)
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('talentai_recent_views');
-    if (stored) {
-      const ids: string[] = JSON.parse(stored);
-      const matches = ids
-        .map(id => MOCK_JOBS.find(j => j.id === id))
-        .filter((j): j is Job => !!j)
-        .slice(0, 4);
-      setRecentJobs(matches);
+    try {
+      const stored = localStorage.getItem('talentai_recent_job_items');
+      if (stored) {
+        const jobs: Job[] = JSON.parse(stored);
+        if (Array.isArray(jobs)) {
+          setRecentJobs(jobs.slice(0, 4));
+        }
+      }
+    } catch {
+      // safely ignore invalid local storage
     }
   }, []);
 
@@ -42,10 +43,25 @@ export default function RecentJobs({ isDashboardLink = false }: RecentJobsProps)
     </div>
   );
 }
-export function trackRecentView(jobId: string) {
+
+export function trackRecentView(jobId: string, job?: Job) {
   if (typeof window === 'undefined') return;
-  const stored = localStorage.getItem('talentai_recent_views');
-  let ids: string[] = stored ? JSON.parse(stored) : [];
-  ids = [jobId, ...ids.filter(id => id !== jobId)].slice(0, 8);
-  localStorage.setItem('talentai_recent_views', JSON.stringify(ids));
+  try {
+    if (job) {
+      const stored = localStorage.getItem('talentai_recent_job_items');
+      let jobs: Job[] = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(jobs)) jobs = [];
+      jobs = [job, ...jobs.filter(j => j.id !== job.id)].slice(0, 8);
+      localStorage.setItem('talentai_recent_job_items', JSON.stringify(jobs));
+    }
+    
+    // Also track ID list for backwards compatibility
+    const storedIds = localStorage.getItem('talentai_recent_views');
+    let ids: string[] = storedIds ? JSON.parse(storedIds) : [];
+    if (!Array.isArray(ids)) ids = [];
+    ids = [jobId, ...ids.filter(id => id !== jobId)].slice(0, 8);
+    localStorage.setItem('talentai_recent_views', JSON.stringify(ids));
+  } catch {
+    // safely ignore local storage errors
+  }
 }

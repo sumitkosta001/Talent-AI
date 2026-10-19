@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useApplications } from '@/hooks/useApplications';
-import { Loader2, Check } from 'lucide-react';
+import React from 'react';
+import { Send } from 'lucide-react';
 
 interface ApplyButtonProps {
   jobId: string;
   role: string;
   company: string;
-  logo: string;
-  logoColor: string;
-  salary: string;
-  location: string;
+  logo?: string;
+  logoColor?: string;
+  salary?: string;
+  location?: string;
+  status?: string;
   className?: string;
 }
 
@@ -23,52 +23,35 @@ export default function ApplyButton({
   logoColor,
   salary,
   location,
+  status = 'PUBLISHED',
   className = '',
 }: ApplyButtonProps) {
-  const { isApplied, applyForJob } = useApplications();
-  const [loading, setLoading] = useState(false);
-  
-  const applied = isApplied(jobId);
+  const isClosed = status ? status.toUpperCase() === 'CLOSED' : false;
 
-  const handleApply = async (e: React.MouseEvent) => {
+  const handleApply = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (applied) return;
-    
-    setLoading(true);
-    const success = await applyForJob(jobId, role, company, logo, logoColor, salary, location);
-    setLoading(false);
-    
-    if (success) {
-      alert(`Application to ${company} for ${role} submitted successfully!`);
-    } else {
-      alert('Failed to submit application. Please try again.');
-    }
+    if (isClosed) return;
+
+    // Phase 6 entry point placeholder.
+    // Do not call ApplicationService.applyForJob(), create an application record, or claim an application was submitted.
+    alert('Application submission will be enabled in Phase 6. Applications cannot be submitted yet.');
   };
 
   return (
     <button
+      type="button"
       onClick={handleApply}
-      disabled={loading || applied}
-      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
-        applied
-          ? 'bg-green-50 text-green-700 border border-green-200'
+      disabled={isClosed}
+      title={isClosed ? 'This position is closed' : 'Apply Now (Phase 6 entry point)'}
+      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+        isClosed
+          ? 'bg-slate-200 text-slate-500 border border-slate-300'
           : 'bg-[#2563EB] text-white hover:bg-[#1D4ED8]'
       } ${className}`}
     >
-      {loading ? (
-        <>
-          <Loader2 size={13} className="animate-spin" />
-          Applying...
-        </>
-      ) : applied ? (
-        <>
-          <Check size={13} />
-          Applied
-        </>
-      ) : (
-        'Apply Now'
-      )}
+      <Send size={13} />
+      {isClosed ? 'Position Closed' : 'Apply Now'}
     </button>
   );
 }

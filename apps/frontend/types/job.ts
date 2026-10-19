@@ -31,9 +31,14 @@ export interface Job {
   responsibilities?: string[];
   requirements?: string[];
   benefits?: Benefit[];
+  educationRequirements?: string[];
+  education_requirements?: string[];
+  status?: string;
+  currency?: string;
   date: string; // Date posted description
   type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
   remoteStatus: 'Remote' | 'Hybrid' | 'On-site';
+  workMode?: string;
   deadline?: string;
   applicantsCount?: number;
   isFeatured?: boolean;
@@ -62,7 +67,7 @@ export interface JobSearchParams {
   experience_months?: number;
   salary_min?: number;
   salary_max?: number;
-  work_mode?: 'REMOTE' | 'HYBRID' | 'ONSITE';
+  work_mode?: 'remote' | 'hybrid' | 'onsite' | 'REMOTE' | 'HYBRID' | 'ONSITE';
   page?: number;
   size?: number;
   sort_by?: string;
@@ -82,6 +87,8 @@ export interface JobApiItem {
   required_experience_months?: number;
   required_skills?: string[];
   preferred_skills?: string[];
+  education_requirements?: string[];
+  required_keywords?: string[];
   salary_min?: number;
   salary_max?: number;
   currency?: string;

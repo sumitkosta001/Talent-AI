@@ -1,12 +1,12 @@
-"""Job Posting and Recruitment Domain Custom Exceptions."""
-
+from uuid import UUID
+from typing import Union
 from .base import TalentAIException
 
 
 class JobNotFoundError(TalentAIException):
     """Raised when target job posting does not exist."""
 
-    def __init__(self, job_id: str | int = "") -> None:
+    def __init__(self, job_id: Union[str, int, UUID] = "") -> None:
         """Initialize job not found error with 404 status."""
         msg = f"Job posting '{job_id}' not found." if job_id else "Job posting not found."
         super().__init__(message=msg, status_code=404)

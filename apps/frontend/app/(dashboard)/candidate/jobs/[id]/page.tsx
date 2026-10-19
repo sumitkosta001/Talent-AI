@@ -31,11 +31,18 @@ export default function CandidateJobDetailPage({ params }: CandidateJobDetailPag
       const jobData = await JobsService.getJobById(id);
       if (jobData) {
         setJob(jobData);
-        trackRecentView(id);
+        trackRecentView(id, jobData);
         if (jobData.companyId) {
           try {
             const compData = await CompanyService.getCompanyById(jobData.companyId);
-            setCompany(compData);
+            if (compData) {
+              setCompany(compData);
+              if (compData.name && (!jobData.company || jobData.company === 'Company')) {
+                const updatedJob = { ...jobData, company: compData.name };
+                setJob(updatedJob);
+                trackRecentView(id, updatedJob);
+              }
+            }
           } catch {
             // Company details optional if endpoint unavailable
           }

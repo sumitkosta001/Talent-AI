@@ -17,6 +17,25 @@ export class CompanyService {
     return res.json();
   }
 
+  static mapApiItemToCompany(item: Record<string, unknown>): Company {
+    const name = (item.name as string) || 'Company Profile';
+    return {
+      id: (item.id as string) || '',
+      name: (item.name as string) || '',
+      description: (item.description as string) || null,
+      about: (item.description as string) || '',
+      website: (item.website as string) || '',
+      logo_url: (item.logo_url as string) || null,
+      logo: (item.logo_url as string) || (name ? name.charAt(0).toUpperCase() : 'C'),
+      logoColor: 'bg-blue-600',
+      location: (item.location as string) || '',
+      headquarters: (item.location as string) || '',
+      industry: (item.industry as string) || '',
+      employees: (item.employees as string) || '',
+      techStack: Array.isArray(item.techStack) ? (item.techStack as string[]) : [],
+    };
+  }
+
   static async getCompanyById(id: string): Promise<Company | null> {
     if (DEV_MODE) {
       await mockDelay(200);
@@ -25,8 +44,12 @@ export class CompanyService {
     }
 
     const res = await apiClient.get(`/api/v1/companies/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch company profile');
-    return res.json();
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error('Failed to fetch company profile');
+    }
+    const data = await res.json();
+    return this.mapApiItemToCompany(data);
   }
 }
 
@@ -50,21 +73,21 @@ export class RecruiterCompanyService {
     localStorage.setItem('talentai_recruiter_company', JSON.stringify(company));
   }
 
-  static mapApiItemToCompanyDetail(item: any): CompanyDetail {
-    const name = item.name || 'Company Profile';
+  static mapApiItemToCompanyDetail(item: Record<string, unknown>): CompanyDetail {
+    const name = (item.name as string) || 'Company Profile';
     return {
-      name: item.name || '',
-      logo: item.logo_url || (name ? name.charAt(0).toUpperCase() : 'C'),
+      name: (item.name as string) || '',
+      logo: (item.logo_url as string) || (name ? name.charAt(0).toUpperCase() : 'C'),
       logoColor: 'bg-blue-600',
-      bannerUrl: item.banner_url || undefined,
-      about: item.description || '',
-      industry: item.industry || 'Technology',
-      website: item.website || '',
-      location: item.location || 'Remote',
-      employees: item.employees || '50-200',
-      founded: item.founded || '2024',
-      culture: item.culture || ['Innovation', 'Inclusivity', 'Autonomy'],
-      benefits: item.benefits || ['Health Insurance', 'Remote Work', 'Learning Budget'],
+      bannerUrl: (item.banner_url as string) || undefined,
+      about: (item.description as string) || '',
+      industry: (item.industry as string) || 'Technology',
+      website: (item.website as string) || '',
+      location: (item.location as string) || 'Remote',
+      employees: (item.employees as string) || '50-200',
+      founded: (item.founded as string) || '2024',
+      culture: Array.isArray(item.culture) ? (item.culture as string[]) : ['Innovation', 'Inclusivity', 'Autonomy'],
+      benefits: Array.isArray(item.benefits) ? (item.benefits as string[]) : ['Health Insurance', 'Remote Work', 'Learning Budget'],
       hiringTeam: [],
       socials: {},
     };
@@ -124,7 +147,7 @@ export class RecruiterCompanyService {
         const msg = errData?.error?.message || errData?.detail || 'Failed to update company';
         throw new Error(msg);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.warn('Backend company update error:', e);
       throw e;
     }

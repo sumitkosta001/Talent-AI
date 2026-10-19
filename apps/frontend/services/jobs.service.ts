@@ -20,7 +20,10 @@ export class JobsService {
     if (params.salary_max !== undefined && params.salary_max !== null) {
       query.append('salary_max', params.salary_max.toString());
     }
-    if (params.work_mode) query.append('work_mode', params.work_mode);
+    if (params.work_mode) {
+      const wm = params.work_mode.toString().trim().toLowerCase();
+      if (wm) query.append('work_mode', wm);
+    }
     if (params.page) query.append('page', params.page.toString());
     if (params.size) query.append('size', params.size.toString());
     if (params.sort_by) query.append('sort_by', params.sort_by);
@@ -34,10 +37,25 @@ export class JobsService {
   }
 
   static mapApiItemToJob(item: any): Job {
-    const minSalary = item.salary_min ? (item.salary_min >= 100000 ? `${(item.salary_min / 100000).toFixed(1).replace(/\.0$/, '')}L` : item.salary_min) : null;
-    const maxSalary = item.salary_max ? (item.salary_max >= 100000 ? `${(item.salary_max / 100000).toFixed(1).replace(/\.0$/, '')}L` : item.salary_max) : null;
-    const currencySym = item.currency === 'INR' || !item.currency ? '₹' : item.currency + ' ';
-    
+    const currency = item.currency || 'USD';
+    const currencySym = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : `${currency} `;
+
+    const formatAmount = (val: number) => {
+      if (currency === 'INR') {
+        if (val >= 100000) {
+          return `${(val / 100000).toFixed(1).replace(/\.0$/, '')}L`;
+        }
+        return val.toLocaleString();
+      }
+      if (val >= 1000) {
+        return `${Math.round(val / 1000)}k`;
+      }
+      return val.toLocaleString();
+    };
+
+    const minSalary = item.salary_min != null ? formatAmount(item.salary_min) : null;
+    const maxSalary = item.salary_max != null ? formatAmount(item.salary_max) : null;
+
     let salaryStr = 'Salary not specified';
     if (minSalary && maxSalary) {
       salaryStr = `${currencySym}${minSalary} – ${currencySym}${maxSalary}`;
@@ -61,7 +79,8 @@ export class JobsService {
       }
     }
 
-    const workModeStr = item.work_mode === 'REMOTE' ? 'Remote' : item.work_mode === 'HYBRID' ? 'Hybrid' : 'On-site';
+    const rawMode = (item.work_mode || '').toString().toUpperCase();
+    const workModeStr = rawMode === 'REMOTE' ? 'Remote' : rawMode === 'HYBRID' ? 'Hybrid' : rawMode === 'ONSITE' ? 'On-site' : (item.work_mode || 'Remote');
 
     return {
       id: item.id,
@@ -70,10 +89,11 @@ export class JobsService {
       role: item.title,
       title: item.title,
       salary: salaryStr,
+      currency: currency,
       salaryDetail: item.salary_min ? {
         min: item.salary_min,
         max: item.salary_max || item.salary_min,
-        currency: item.currency || 'INR',
+        currency: currency,
         period: 'yearly'
       } : undefined,
       match: 90,
@@ -81,16 +101,19 @@ export class JobsService {
       logo: (item.company_name || item.title || 'J').charAt(0).toUpperCase(),
       logoColor: 'bg-blue-600',
       experience: expStr,
-      skills: item.required_skills && item.required_skills.length > 0 ? item.required_skills : [],
+      skills: Array.isArray(item.required_skills) ? item.required_skills : [],
       bookmarked: false,
       applied: false,
       description: item.description || '',
-      responsibilities: item.required_keywords || [],
-      requirements: item.preferred_skills || [],
-      benefits: item.education_requirements || [],
+      responsibilities: Array.isArray(item.required_keywords) ? item.required_keywords : [],
+      requirements: Array.isArray(item.preferred_skills) ? item.preferred_skills : [],
+      educationRequirements: Array.isArray(item.education_requirements) ? item.education_requirements : [],
+      education_requirements: Array.isArray(item.education_requirements) ? item.education_requirements : [],
       date: item.published_at ? new Date(item.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently posted',
-      type: (item.employment_type as any) || 'Full-time',
-      remoteStatus: workModeStr as any,
+      status: item.status || 'PUBLISHED',
+      type: (item.employment_type as Job['type']) || 'Full-time',
+      remoteStatus: workModeStr as Job['remoteStatus'],
+      workMode: workModeStr,
       category: item.department || 'Engineering',
     };
   }
@@ -118,12 +141,12 @@ export class JobsService {
         sort_order = 'asc';
       }
 
-      let work_mode: 'REMOTE' | 'HYBRID' | 'ONSITE' | undefined;
+      let work_mode: 'remote' | 'hybrid' | 'onsite' | undefined;
       if (filters?.remoteStatus && filters.remoteStatus !== 'Any') {
-        const u = filters.remoteStatus.toUpperCase();
-        if (u === 'REMOTE' || u === 'HYBRID' || u === 'ONSITE') {
-          work_mode = u as any;
-        }
+        const u = filters.remoteStatus.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        if (u === 'remote') work_mode = 'remote';
+        else if (u === 'hybrid') work_mode = 'hybrid';
+        else if (u === 'onsite') work_mode = 'onsite';
       }
 
       const backendRes = await this.searchJobs({
@@ -201,7 +224,10 @@ export class JobsService {
     }
 
     const res = await apiClient.get(`/api/v1/jobs/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch job detail');
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error(`Failed to fetch job detail (${res.status})`);
+    }
     const data = await res.json();
     return this.mapApiItemToJob(data);
   }
